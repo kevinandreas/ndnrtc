@@ -19,6 +19,9 @@
 #include <string.h>
 #include <time.h>
 #include <stdlib.h>
+//ubuntu build add
+#include <stdarg.h>
+//
 #include <vector>
 #include <cstring>
 #include <list>

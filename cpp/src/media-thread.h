@@ -156,7 +156,7 @@ namespace ndnrtc
             onInterest(const boost::shared_ptr<const ndn::Name>& prefix,
                        const boost::shared_ptr<const ndn::Interest>& interest,
                        ndn::Face& face,
-                       uint64_t ts,
+                       boost::uint64_t ts,
                        const boost::shared_ptr<const ndn::InterestFilter>& filter);
             
             virtual void

@@ -38,7 +38,7 @@ AudioPlayout::~AudioPlayout()
 //******************************************************************************
 #pragma mark - private
 bool
-AudioPlayout::playbackPacket(int64_t packetTsLocal, PacketData* data,
+AudioPlayout::playbackPacket(boost::int64_t packetTsLocal, PacketData* data,
                              PacketNumber playbackPacketNo,
                              PacketNumber sequencePacketNo,
                              PacketNumber pairedPacketNo,

@@ -10,7 +10,12 @@
 //
 
 #include <sys/time.h>
-#include <mach/mach_time.h>
+//#include <mach/mach_time.h>
+//ubuntu build add
+//-#include <mach/mach_time.h>
+//#include <mach/mach_time.h>
+#include <pthread.h>
+//
 #include <fstream>
 #include <iomanip>
 #include "simple-log.h"
@@ -35,7 +40,9 @@ ndnlog::new_api::NilLogger ndnlog::new_api::NilLogger::nilLogger_ = ndnlog::new_
 ndnlog::new_api::Logger* Logger::sharedInstance_ = 0;
 
 //******************************************************************************
-pthread_mutex_t new_api::Logger::stdOutMutex_ = PTHREAD_RECURSIVE_MUTEX_INITIALIZER;
+//pthread_mutex_t new_api::Logger::stdOutMutex_ = PTHREAD_RECURSIVE_MUTEX_INITIALIZER;
+//ubuntu build add
+pthread_mutex_t new_api::Logger::stdOutMutex_ = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
 std::map<std::string, new_api::Logger*> new_api::Logger::loggers_;
 
 #pragma mark - construction/destruction
@@ -47,7 +54,9 @@ logLevel_(logLevel),
 logFile_(logFile),
 outStream_(&std::cout),
 isStdOutActive_(true),
-logMutex_((pthread_mutex_t)PTHREAD_RECURSIVE_MUTEX_INITIALIZER)
+//logMutex_((pthread_mutex_t)PTHREAD_RECURSIVE_MUTEX_INITIALIZER)
+//ubuntu build add
+logMutex_((pthread_mutex_t)PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP)
 {
     if (logFile_ != "")
     {
@@ -167,6 +176,7 @@ std::string new_api::Logger::stringify(NdnLoggerLevel lvl)
 int64_t new_api::Logger::getMillisecondTimestamp()
 {
 #if 0
+
     struct timeval tv;
     gettimeofday(&tv, NULL);
     
@@ -180,7 +190,9 @@ int64_t new_api::Logger::getMillisecondTimestamp()
     
     int64_t ticks = 0;
     
-#if 0
+//#if 0
+//ubuntu build add
+#if 1
     ticks = 1000LL*static_cast<int64_t>(tv.tv_sec)+static_cast<int64_t>(tv.tv_usec)/1000LL;
 #else
     static mach_timebase_info_data_t timebase;

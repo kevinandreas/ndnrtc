@@ -8,16 +8,16 @@
 //  Author:  Peter Gusev
 
 #include "av-sync.h"
-
+using namespace boost;
 using namespace webrtc;
 using namespace ndnrtc;
 using namespace ndnrtc::new_api;
 using namespace ndnlog;
-using namespace boost;
 
-const int64_t AudioVideoSynchronizer::TolerableLeadingDriftMs = 15;
-const int64_t AudioVideoSynchronizer::TolerableLaggingDriftMs = 45;
-const int64_t AudioVideoSynchronizer::MaxAllowableAvSyncAdjustment = 50;
+
+const boost::int64_t AudioVideoSynchronizer::TolerableLeadingDriftMs = 15;
+const boost::int64_t AudioVideoSynchronizer::TolerableLaggingDriftMs = 45;
+const boost::int64_t AudioVideoSynchronizer::MaxAllowableAvSyncAdjustment = 50;
 
 //******************************************************************************
 #pragma mark - construction/destruction
@@ -44,8 +44,8 @@ AudioVideoSynchronizer::~AudioVideoSynchronizer(){
 
 //******************************************************************************
 #pragma mark - public
-int AudioVideoSynchronizer::synchronizePacket(int64_t remoteTimestamp,
-                                              int64_t packetTsLocal,
+int AudioVideoSynchronizer::synchronizePacket(boost::int64_t remoteTimestamp,
+                                              boost::int64_t packetTsLocal,
                                               Consumer *consumer)
 {
     if (consumer == slaveSyncData_.consumer_)
@@ -74,8 +74,8 @@ void AudioVideoSynchronizer::reset()
 #pragma mark - private
 int AudioVideoSynchronizer::syncPacket(SyncStruct& syncData,
                                        SyncStruct& pairedSyncData,
-                                       int64_t packetTsRemote,
-                                       int64_t packetTsLocal,
+                                       boost::int64_t packetTsRemote,
+                                       boost::int64_t packetTsLocal,
                                        Consumer *consumer)
 {
     lock_guard<mutex> scopedLock(syncMutex_);
@@ -95,7 +95,7 @@ int AudioVideoSynchronizer::syncPacket(SyncStruct& syncData,
     if (consumer == this->slaveSyncData_.consumer_ && initialized_)
     {
         lock_guard<mutex> scopedLock2(pairedSyncData.mutex_);
-        int64_t hitTime = packetTsLocal;
+        boost::int64_t hitTime = packetTsLocal;
         
         // packet synchroniztation comes from the idea of strem timelines:
         // each media stream has timeline with points which corresponds to the
@@ -154,7 +154,7 @@ int AudioVideoSynchronizer::syncPacket(SyncStruct& syncData,
         //              :                           :    hitRemote = hitTime + pairedD  |
         //              :                           : <................................ + <- hitTime (timestamp local)
         
-        int64_t hitTimeRemotePaired = hitTime + pairedD;
+        boost::int64_t hitTimeRemotePaired = hitTime + pairedD;
         LogTraceC << syncData.name_
         << " hit remote is " << hitTimeRemotePaired << std::endl;
         
@@ -213,8 +213,8 @@ void AudioVideoSynchronizer::onRebuffer(Consumer *consumer)
 
 // should be called from thread-safe place
 void AudioVideoSynchronizer::initialize(SyncStruct &syncData,
-                                        int64_t firstPacketTsRemote,
-                                        int64_t localTimestamp,
+                                        boost::int64_t firstPacketTsRemote,
+                                        boost::int64_t localTimestamp,
                                         Consumer *consumer)
 {
     LogTraceC << "initalize " << syncData.name_ << std::endl;

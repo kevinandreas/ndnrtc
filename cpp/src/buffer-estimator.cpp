@@ -15,12 +15,12 @@ using namespace boost;
 using namespace ndnrtc::new_api;
 
 // minimal buffer size in milliseconds
-const int64_t BufferEstimator::MinBufferSizeMs = 250;
+const boost::int64_t BufferEstimator::MinBufferSizeMs = 250;
 
 //******************************************************************************
 #pragma mark - construction/destruction
 BufferEstimator::BufferEstimator(const shared_ptr<RttEstimation>& rttEstimation,
-                                 int64_t minBufferSizeMs):
+                                 boost::int64_t minBufferSizeMs):
 rttEstimation_(rttEstimation),
 minBufferSizeMs_(minBufferSizeMs)
 {
@@ -33,7 +33,7 @@ BufferEstimator::setProducerRate(double producerRate)
 {
 }
 
-int64_t
+boost::int64_t
 BufferEstimator::getTargetSize()
 {
     double rttEstimate = rttEstimation_->getCurrentEstimation();

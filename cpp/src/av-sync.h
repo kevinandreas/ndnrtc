@@ -31,9 +31,9 @@ namespace ndnrtc
     public IMediaReceiverCallback
     {
     public:
-        static const int64_t TolerableLeadingDriftMs; // audio should not lead video by more than this value
-        static const int64_t TolerableLaggingDriftMs; // audio should not lag video by more than this value
-        static const int64_t MaxAllowableAvSyncAdjustment; // this value should be used when synchronizing stream for sync adjustment control
+        static const boost::int64_t TolerableLeadingDriftMs; // audio should not lead video by more than this value
+        static const boost::int64_t TolerableLaggingDriftMs; // audio should not lag video by more than this value
+        static const boost::int64_t MaxAllowableAvSyncAdjustment; // this value should be used when synchronizing stream for sync adjustment control
         
         AudioVideoSynchronizer(const boost::shared_ptr<new_api::Consumer>& masterConsumer,
                                const boost::shared_ptr<new_api::Consumer>& slaveConsumer);
@@ -52,7 +52,7 @@ namespace ndnrtc
          * @return Playout duration adjustment (in ms) needed for media streams 
          * to be synchronized or 0 if no adjustment is required.
          */
-        int synchronizePacket(int64_t remoteTimestamp, int64_t localTimestamp,
+        int synchronizePacket(boost::int64_t remoteTimestamp, boost::int64_t localTimestamp,
                               new_api::Consumer *consumer);
         
         /**
@@ -86,10 +86,10 @@ namespace ndnrtc
             const char *name_;
             bool initialized_;
             
-            int64_t lastPacketTsLocal_; // local timestamp of last packet
+            boost::int64_t lastPacketTsLocal_; // local timestamp of last packet
                                         // playout time, i.e. when packet was
                                         // acquired for playback
-            int64_t lastPacketTsRemote_;    // remote timestamp of last packet
+            boost::int64_t lastPacketTsRemote_;    // remote timestamp of last packet
                                             // playout time, i.e. packet
                                             // timestamp published by producer
             
@@ -109,13 +109,13 @@ namespace ndnrtc
         
         int syncPacket(SyncStruct& syncData,
                        SyncStruct& pairedSyncData,
-                       int64_t packetTsRemote,
-                       int64_t packetTsLocal,
+                       boost::int64_t packetTsRemote,
+                       boost::int64_t packetTsLocal,
                        new_api::Consumer *consumer);
         
         void initialize(SyncStruct& syncData,
-                        int64_t firstPacketTsRemote,
-                        int64_t packetTsLocal,
+                        boost::int64_t firstPacketTsRemote,
+                        boost::int64_t packetTsLocal,
                         new_api::Consumer *consumer);
     };
 }

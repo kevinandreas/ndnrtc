@@ -95,7 +95,7 @@ VideoThread::onEncodedFrameDelivered(const webrtc::EncodedImage &encodedImage,
                                      double captureTimestamp,
                                      bool completeFrame)
 {
-    int64_t timestamp = NdnRtcUtils::millisecondTimestamp();
+    boost::int64_t timestamp = NdnRtcUtils::millisecondTimestamp();
     
     // in order to avoid situations when interest arrives simultaneously
     // with the data being added to the PIT/cache, we synchronize with
@@ -115,7 +115,7 @@ VideoThread::onEncodedFrameDelivered(const webrtc::EncodedImage &encodedImage,
     else
         gopCount_++;
     
-    int64_t encodingDelay = timestamp - encodingTimestampMs_;
+    boost::int64_t encodingDelay = timestamp - encodingTimestampMs_;
     
     (encodingDelay > FRAME_DELAY_DEADLINE ? LogWarnC : LogTraceC)
     << "encoding delay " << encodingDelay
@@ -223,7 +223,7 @@ void
 VideoThread::onInterest(const shared_ptr<const Name>& prefix,
                         const shared_ptr<const Interest>& interest,
                         ndn::Face& face,
-                        uint64_t ts,
+                        boost::uint64_t ts,
                         const shared_ptr<const InterestFilter>& filter)
 {
     const Name& name = interest->getName();

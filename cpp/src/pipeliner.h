@@ -141,7 +141,7 @@ namespace ndnrtc {
             unsigned int streamId_; // currently fetched stream id
             boost::mutex streamSwitchMutex_;
             bool useKeyNamespace_;
-            int64_t recoveryCheckpointTimestamp_, startPhaseTimestamp_;
+            boost::int64_t recoveryCheckpointTimestamp_, startPhaseTimestamp_;
             
             void
             switchToState(State newState)
@@ -151,8 +151,8 @@ namespace ndnrtc {
                 
                 if (oldState != newState)
                 {
-                    int64_t timestamp = NdnRtcUtils::millisecondTimestamp();
-                    int64_t phaseDuration = timestamp - startPhaseTimestamp_;
+                    boost::int64_t timestamp = NdnRtcUtils::millisecondTimestamp();
+                    boost::int64_t phaseDuration = timestamp - startPhaseTimestamp_;
                     startPhaseTimestamp_ = timestamp;
                     
                     ((oldState == StateChasing) ? LogInfoC : LogDebugC)
@@ -205,26 +205,26 @@ namespace ndnrtc {
             
             void
             expressRange(Interest& interest, SegmentNumber startNo,
-                         SegmentNumber endNo, int64_t priority, bool isParity);
+                         SegmentNumber endNo, boost::int64_t priority, bool isParity);
             
             void
-            express(Interest& interest, int64_t priority);
+            express(Interest& interest, boost::int64_t priority);
             
             boost::shared_ptr<Interest>
-            getDefaultInterest(const Name& prefix, int64_t timeoutMs = 0);
+            getDefaultInterest(const Name& prefix, boost::int64_t timeoutMs = 0);
             
             boost::shared_ptr<Interest>
-            getInterestForRightMost(int64_t timeoutMs, bool isKeyNamespace = false,
+            getInterestForRightMost(boost::int64_t timeoutMs, bool isKeyNamespace = false,
                                     PacketNumber exclude = -1);
             
-            int64_t
-            getInterestLifetime(int64_t playbackDeadline,
+            boost::int64_t
+            getInterestLifetime(boost::int64_t playbackDeadline,
                                 FrameBuffer::Slot::Namespace nspc = FrameBuffer::Slot::Delta,
                                 bool rtx = false);
             
             void
             requestMissing(const boost::shared_ptr<FrameBuffer::Slot>& slot,
-                           int64_t lifetime, int64_t priority,
+                           boost::int64_t lifetime, boost::int64_t priority,
                            bool wasTimedOut = false);
             
             // IFrameBufferCallback interface
@@ -273,7 +273,7 @@ namespace ndnrtc {
             RttChangeEstimator rttChangeEstimator_;
             PipelinerWindow window_;
             
-            uint64_t timestamp_;
+            boost::uint64_t timestamp_;
             bool waitForChange_, waitForStability_;
             unsigned int failedWindow_;
             FrameNumber seedFrameNo_;

@@ -24,7 +24,7 @@ namespace ndnrtc {
             
         private:
             bool
-            playbackPacket(int64_t packetTsLocal, PacketData* data,
+            playbackPacket(boost::int64_t packetTsLocal, PacketData* data,
                            PacketNumber playbackPacketNo,
                            PacketNumber sequencePacketNo,
                            PacketNumber pairedPacketNo,

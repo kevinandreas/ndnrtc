@@ -24,11 +24,11 @@ namespace ndnrtc {
         {
         public:
             
-            static const int64_t MinBufferSizeMs;
+            static const boost::int64_t MinBufferSizeMs;
             
             BufferEstimator():minBufferSizeMs_(MinBufferSizeMs){}
             BufferEstimator(const boost::shared_ptr<RttEstimation>& rttEstimation,
-                            int64_t minBufferSizeMs = MinBufferSizeMs);
+                            boost::int64_t minBufferSizeMs = MinBufferSizeMs);
             ~BufferEstimator(){}
             
             void
@@ -39,15 +39,15 @@ namespace ndnrtc {
             { rttEstimation_ = rttEstimation; }
             
             void
-            setMinimalBufferSize(int64_t minimalBufferSize)
+            setMinimalBufferSize(boost::int64_t minimalBufferSize)
             { minBufferSizeMs_ = minimalBufferSize; }
             
-            int64_t
+            boost::int64_t
             getTargetSize();
             
         private:
             boost::shared_ptr<RttEstimation> rttEstimation_;
-            int64_t minBufferSizeMs_;
+            boost::int64_t minBufferSizeMs_;
         };
     }
 }

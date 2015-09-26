@@ -882,10 +882,10 @@ comparator_(FrameBuffer::Slot::PlaybackComparator(false))
 
 //******************************************************************************
 #pragma mark - public
-int64_t
+boost::int64_t
 ndnrtc::new_api::FrameBuffer::PlaybackQueue::getPlaybackDuration(bool estimate)
 {
-    int64_t playbackDurationMs = 0;
+    boost::int64_t playbackDurationMs = 0;
     
     if (this->size() >= 1)
     {
@@ -924,7 +924,7 @@ void
 ndnrtc::new_api::FrameBuffer::PlaybackQueue::updatePlaybackDeadlines()
 {    
     sort();
-    int64_t playbackDeadlineMs = 0;
+    boost::int64_t playbackDeadlineMs = 0;
     
     if (this->size() >= 1)
     {
@@ -1321,7 +1321,7 @@ ndnrtc::new_api::FrameBuffer::newData(const ndn::Data &data)
                     updateEstimation(slot->getRecentSegment()->getRoundTripDelayUsec()/1000,
                                      slot->getRecentSegment()->getMetadata().generationDelayMs_);
                     // now update target size
-                    int64_t targetBufferSize = consumer_->getBufferEstimator()->getTargetSize();
+                    boost::int64_t targetBufferSize = consumer_->getBufferEstimator()->getTargetSize();
 
                     if (targetSizeMs_ != targetBufferSize)
                     {
@@ -1539,7 +1539,7 @@ ndnrtc::new_api::FrameBuffer::recycleOldSlots(int nSlotsToRecycle)
     << playbackQueue_.dumpShort() << std::endl;
 }
 
-int64_t
+boost::int64_t
 ndnrtc::new_api::FrameBuffer::getEstimatedBufferSize()
 {
     if (isEstimationNeeded_)
@@ -1553,11 +1553,11 @@ ndnrtc::new_api::FrameBuffer::getEstimatedBufferSize()
     return estimatedSizeMs_;
 }
 
-int64_t
+boost::int64_t
 ndnrtc::new_api::FrameBuffer::getPlayableBufferSize()
 {
     lock_guard<recursive_mutex> scopedLock(syncMutex_);
-    int64_t size = playbackQueue_.getPlaybackDuration(false);
+    boost::int64_t size = playbackQueue_.getPlaybackDuration(false);
     
     statStorage_->updateIndicator(statistics::Indicator::BufferPlayableSize, size);
     
@@ -1662,9 +1662,9 @@ ndnrtc::new_api::FrameBuffer::acquireSlot(ndnrtc::PacketData **packetData,
                 (*statStorage_)[Indicator::DroppedKeyNum]++;
         }
         
-        int64_t playableSize = getPlayableBufferSize();
+        boost::int64_t playableSize = getPlayableBufferSize();
         
-        ((playableSize < (int64_t)((double)getTargetSize()/2.)) ? LogWarnC : LogTraceC)
+        ((playableSize < (boost::int64_t)((double)getTargetSize()/2.)) ? LogWarnC : LogTraceC)
         << "playable buffer level:"
         << " duration " << playableSize
         << " frames " << playbackQueue_.size()

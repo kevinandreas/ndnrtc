@@ -130,7 +130,7 @@ Playout::processPlayout()
     
     if (isRunning_)
     {
-        int64_t now = NdnRtcUtils::millisecondTimestamp();
+        boost::int64_t now = NdnRtcUtils::millisecondTimestamp();
         
         if (frameBuffer_->getState() == FrameBuffer::Valid)
         {
@@ -277,7 +277,7 @@ Playout::playbackDelayAdjustment(int playbackDelay)
 }
 
 int
-Playout::avSyncAdjustment(int64_t nowTimestamp, int playbackDelay)
+Playout::avSyncAdjustment(boost::int64_t nowTimestamp, int playbackDelay)
 {
     int syncDriftAdjustment = 0;
     
@@ -301,7 +301,7 @@ Playout::avSyncAdjustment(int64_t nowTimestamp, int playbackDelay)
 void
 Playout::checkBuffer()
 {
-    int64_t timestamp = NdnRtcUtils::millisecondTimestamp();
+    boost::int64_t timestamp = NdnRtcUtils::millisecondTimestamp();
     if (timestamp - bufferCheckTs_ > BufferCheckInterval)
     {
         bufferCheckTs_ = timestamp;

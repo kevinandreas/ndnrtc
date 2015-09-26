@@ -33,16 +33,16 @@ namespace ndnrtc {
         boost::shared_ptr<Face>
         getFace() { return face_; }
         
-        uint64_t
+        boost::uint64_t
         expressInterest(const Interest& interest,
                         const OnData& onData,
                         const OnTimeout& onTimeout = OnTimeout(),
                         WireFormat& wireFormat = *WireFormat::getDefaultWireFormat());
         
         void
-        removePendingInterest(uint64_t interestId);
+        removePendingInterest(boost::uint64_t interestId);
         
-        uint64_t
+        boost::uint64_t
         registerPrefix(const Name& prefix,
                        const OnInterest& onInterest,
                        const OnRegisterFailed& onRegisterFailed,
@@ -50,7 +50,7 @@ namespace ndnrtc {
                        WireFormat& wireFormat = *WireFormat::getDefaultWireFormat());
         
         void
-        unregisterPrefix(uint64_t prefixId);
+        unregisterPrefix(boost::uint64_t prefixId);
         
         void
         setCommandSigningInfo(KeyChain& keyChain, const Name& certificateName);

@@ -172,7 +172,7 @@ void
 ndnrtc::new_api::PipelinerBase::expressRange(Interest& interest,
                                              SegmentNumber startNo,
                                              SegmentNumber endNo,
-                                             int64_t priority, bool isParity)
+                                             boost::int64_t priority, bool isParity)
 {
     Name prefix = interest.getName();
     
@@ -188,7 +188,7 @@ ndnrtc::new_api::PipelinerBase::expressRange(Interest& interest,
             int segmentIdx = it - segmentInterests.begin();
             
             // lower priority for parity data
-            int64_t pri = priority + segmentIdx + isParity*100;
+            boost::int64_t pri = priority + segmentIdx + isParity*100;
             
             consumer_->getInterestQueue()->enqueueInterest(*interestPtr,
                                                            Priority::fromArrivalDelay(pri),
@@ -199,7 +199,7 @@ ndnrtc::new_api::PipelinerBase::expressRange(Interest& interest,
 }
 
 void
-ndnrtc::new_api::PipelinerBase::express(Interest &interest, int64_t priority)
+ndnrtc::new_api::PipelinerBase::express(Interest &interest, boost::int64_t priority)
 {
     frameBuffer_->interestIssued(interest);
     
@@ -221,7 +221,7 @@ ndnrtc::new_api::PipelinerBase::prefetchFrame(const ndn::Name &basePrefix,
     
     packetPrefix.append(NdnRtcUtils::componentFromInt(packetNo));
     
-    int64_t playbackDeadline = frameBuffer_->getEstimatedBufferSize();
+    boost::int64_t playbackDeadline = frameBuffer_->getEstimatedBufferSize();
     shared_ptr<Interest> frameInterest = getDefaultInterest(packetPrefix);
     
     frameInterest->setInterestLifetimeMilliseconds(getInterestLifetime(playbackDeadline, nspc));
@@ -242,7 +242,7 @@ ndnrtc::new_api::PipelinerBase::prefetchFrame(const ndn::Name &basePrefix,
 }
 
 shared_ptr<Interest>
-ndnrtc::new_api::PipelinerBase::getDefaultInterest(const ndn::Name &prefix, int64_t timeoutMs)
+ndnrtc::new_api::PipelinerBase::getDefaultInterest(const ndn::Name &prefix, boost::int64_t timeoutMs)
 {
     shared_ptr<Interest> interest(new Interest(prefix, (timeoutMs == 0)?consumer_->getParameters().interestLifetime_:timeoutMs));
     interest->setMustBeFresh(true);
@@ -250,12 +250,12 @@ ndnrtc::new_api::PipelinerBase::getDefaultInterest(const ndn::Name &prefix, int6
     return interest;
 }
 
-int64_t
-ndnrtc::new_api::PipelinerBase::getInterestLifetime(int64_t playbackDeadline,
+boost::int64_t
+ndnrtc::new_api::PipelinerBase::getInterestLifetime(boost::int64_t playbackDeadline,
                                                 FrameBuffer::Slot::Namespace nspc,
                                                 bool rtx)
 {
-    int64_t interestLifetime = consumer_->getParameters().interestLifetime_;
+    boost::int64_t interestLifetime = consumer_->getParameters().interestLifetime_;
     
     return interestLifetime;
     
@@ -276,7 +276,7 @@ ndnrtc::new_api::PipelinerBase::getInterestLifetime(int64_t playbackDeadline,
             
             if (rtx || nspc != FrameBuffer::Slot::Key)
             {
-                int64_t halfBufferSize = frameBuffer_->getEstimatedBufferSize()/2;
+                boost::int64_t halfBufferSize = frameBuffer_->getEstimatedBufferSize()/2;
                 
                 if (halfBufferSize <= 0)
                     halfBufferSize = playbackDeadline;
@@ -285,7 +285,7 @@ ndnrtc::new_api::PipelinerBase::getInterestLifetime(int64_t playbackDeadline,
             }
             else
             { // only key frames
-                int64_t playbackBufSize = frameBuffer_->getPlayableBufferSize();
+                boost::int64_t playbackBufSize = frameBuffer_->getPlayableBufferSize();
                 double gopInterval = ((VideoThreadParams*)consumer_->getCurrentThreadParameters())->coderParams_.gop_/frameBuffer_->getCurrentRate()*1000;
                 
                 interestLifetime = gopInterval-playbackBufSize;
@@ -302,7 +302,7 @@ ndnrtc::new_api::PipelinerBase::getInterestLifetime(int64_t playbackDeadline,
 }
 
 shared_ptr<Interest>
-ndnrtc::new_api::PipelinerBase::getInterestForRightMost(int64_t timeoutMs,
+ndnrtc::new_api::PipelinerBase::getInterestForRightMost(boost::int64_t timeoutMs,
                                                         bool isKeyNamespace,
                                                         PacketNumber exclude)
 {
@@ -374,7 +374,7 @@ ndnrtc::new_api::PipelinerBase::onKeyNeeded(PacketNumber seqNo)
 void
 ndnrtc::new_api::PipelinerBase::requestMissing
 (const shared_ptr<ndnrtc::new_api::FrameBuffer::Slot> &slot,
- int64_t lifetime, int64_t priority, bool wasTimedOut)
+ boost::int64_t lifetime, boost::int64_t priority, bool wasTimedOut)
 {
     // synchronize with buffer
     frameBuffer_->synchronizeAcquire();
@@ -775,7 +775,7 @@ Pipeliner2::askForSubsequentData(const boost::shared_ptr<Data>& data)
     bool needDecreaseWindow = false;
     bool isDeltaFrame = NdnRtcNamespace::isDeltaFramePrefix(data->getName());
     const int timeout = 1000;
-    uint64_t currentTimestamp = NdnRtcUtils::millisecondTimestamp();
+    boost::uint64_t currentTimestamp = NdnRtcUtils::millisecondTimestamp();
     bool isTimedOut = (currentTimestamp-timestamp_ >= timeout);
     
     // normally, we track inter-arrival delay when we receive first segment of

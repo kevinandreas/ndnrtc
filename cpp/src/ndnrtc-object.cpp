@@ -94,7 +94,9 @@ NdnRtcComponent::getDescription() const
 }
 
 thread
-NdnRtcComponent::startThread(function<bool ()> threadFunc)
+//NdnRtcComponent::startThread(function<bool ()> threadFunc)
+//ubuntu build add
+NdnRtcComponent::startThread(boost::function<bool ()> threadFunc)
 {
     thread threadObject = thread([threadFunc](){
         bool result = false;
@@ -124,7 +126,9 @@ NdnRtcComponent::stopThread(thread &threadObject)
     
     if (threadObject.joinable())
     {
-        bool res = threadObject.try_join_for(chrono::milliseconds(500));
+        //bool res = threadObject.try_join_for(chrono::milliseconds(500));
+        //ubuntu build add
+        bool res = threadObject.try_join_for(boost::chrono::milliseconds(500));
                                              
         if (!res)
             threadObject.detach();
@@ -136,7 +140,9 @@ void NdnRtcComponent::scheduleJob(const unsigned int usecInterval,
 {   
     boost::lock_guard<boost::recursive_mutex> scopedLock(this->jobMutex_);
     
-    watchdogTimer_.expires_from_now(boost::chrono::microseconds(usecInterval));
+    //watchdogTimer_.expires_from_now(boost::chrono::microseconds(usecInterval));
+    //ubuntu build add
+    watchdogTimer_.expires_from_now(std::chrono::microseconds(usecInterval));
     isJobScheduled_ = true;
     isTimerCancelled_ = false;
     

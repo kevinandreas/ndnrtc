@@ -190,11 +190,11 @@ int MediaThread::publishPacket(PacketData &packetData,
     }
     
     
-    int64_t timestamp = NdnRtcUtils::millisecondTimestamp();
+    boost::int64_t timestamp = NdnRtcUtils::millisecondTimestamp();
     
     if (publishingTimestampMs_)
     {
-        int64_t delay = timestamp-publishingTimestampMs_;
+        boost::int64_t delay = timestamp-publishingTimestampMs_;
         
         ((delay > FRAME_DELAY_DEADLINE) ? LogWarnC : LogTraceC)
         << "frame publishing delay " << delay
@@ -233,7 +233,7 @@ void MediaThread::registerPrefix(const Name& prefix)
 void MediaThread::onInterest(const shared_ptr<const Name>& prefix,
                              const shared_ptr<const Interest>& interest,
                              ndn::Face& face,
-                             uint64_t ts,
+                             boost::uint64_t ts,
                              const shared_ptr<const InterestFilter>& filter)
 {
     PacketNumber packetNo = NdnRtcNamespace::getPacketNumber(interest->getName());
@@ -296,7 +296,7 @@ int MediaThread::lookupPrefixInPit(const ndn::Name &prefix,
     
     if (pitHit != pit_.end())
     {
-        int64_t currentTime = NdnRtcUtils::millisecondTimestamp();
+        boost::int64_t currentTime = NdnRtcUtils::millisecondTimestamp();
         
         shared_ptr<const Interest> pendingInterest = pitHit->second.interest_;
         

@@ -79,7 +79,7 @@ namespace ndnrtc
             int keyFrameNo_ = 0, deltaFrameNo_ = 0, gopCount_ = 0;
             unsigned int deltaSegnumEstimatorId_, keySegnumEstimatorId_;
             unsigned int deltaParitySegnumEstimatorId_, keyParitySegnumEstimatorId_;
-            int64_t encodingTimestampMs_;
+            boost::int64_t encodingTimestampMs_;
             
             Name deltaFramesPrefix_, keyFramesPrefix_;
             boost::shared_ptr<VideoCoder> coder_;
@@ -88,7 +88,7 @@ namespace ndnrtc
             onInterest(const boost::shared_ptr<const Name>& prefix,
                        const boost::shared_ptr<const Interest>& interest,
                        ndn::Face& face,
-                       uint64_t ts,
+                       boost::uint64_t ts,
                        const boost::shared_ptr<const InterestFilter>& filter);
             
             int

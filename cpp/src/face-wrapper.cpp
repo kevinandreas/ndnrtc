@@ -24,12 +24,12 @@ face_(face)
 
 //******************************************************************************
 #pragma mark - public
-uint64_t FaceWrapper::expressInterest(const Interest &interest,
+boost::uint64_t FaceWrapper::expressInterest(const Interest &interest,
                                       const OnData &onData,
                                       const OnTimeout& onTimeout,
                                       WireFormat& wireFormat)
 {
-    uint64_t iid = 0;
+    boost::uint64_t iid = 0;
     
     lock_guard<recursive_mutex> scopedLock(faceMutex_);
     iid = face_->expressInterest(interest, onData, onTimeout, wireFormat);
@@ -38,13 +38,13 @@ uint64_t FaceWrapper::expressInterest(const Interest &interest,
 }
 
 void
-FaceWrapper::removePendingInterest(uint64_t interestId)
+FaceWrapper::removePendingInterest(boost::uint64_t interestId)
 {
     lock_guard<recursive_mutex> scopedLock(faceMutex_);
     face_->removePendingInterest(interestId);
 }
 
-uint64_t FaceWrapper::registerPrefix(const Name& prefix,
+boost::uint64_t FaceWrapper::registerPrefix(const Name& prefix,
                                      const OnInterest& onInterest,
                                      const OnRegisterFailed& onRegisterFailed,
                                      const ForwardingFlags& flags,
@@ -56,7 +56,7 @@ uint64_t FaceWrapper::registerPrefix(const Name& prefix,
 }
 
 void
-FaceWrapper::unregisterPrefix(uint64_t prefixId)
+FaceWrapper::unregisterPrefix(boost::uint64_t prefixId)
 {
     lock_guard<recursive_mutex> scopedLock(faceMutex_);
     face_->removeRegisteredPrefix(prefixId);

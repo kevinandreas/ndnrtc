@@ -151,7 +151,9 @@ NdnRtcLibrary::NdnRtcLibrary()
     NdnRtcUtils::startBackgroundThread();
     
     LogInfo(LIB_LOG) << "Starting recovery timer..." << std::endl;
-    recoveryCheckTimer.expires_from_now(boost::chrono::milliseconds(50));
+    //recoveryCheckTimer.expires_from_now(boost::chrono::milliseconds(50));
+    //ubunt ubuild add
+    recoveryCheckTimer.expires_from_now(std::chrono::milliseconds(50));
     recoveryCheckTimer.async_wait(recoveryCheck);
     LogInfo(LIB_LOG) << "Recovery timer started" << std::endl;
     
@@ -672,7 +674,9 @@ void recoveryCheck(const boost::system::error_code& e)
         }
         
         try {
-            recoveryCheckTimer.expires_from_now(boost::chrono::milliseconds(50));
+            //recoveryCheckTimer.expires_from_now(boost::chrono::milliseconds(50));
+            //ubuntu build add
+            recoveryCheckTimer.expires_from_now(std::chrono::milliseconds(50));
             recoveryCheckTimer.async_wait(recoveryCheck);
         } catch (boost::system::system_error& e) {
             LogError(LIB_LOG) << "Exception while recovery timer reset: "

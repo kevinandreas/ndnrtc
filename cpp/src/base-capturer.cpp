@@ -70,7 +70,7 @@ bool BaseCapturer::process()
         if (!capturedFrame_.IsZeroSize())
         {
             NdnRtcUtils::frequencyMeterTick(meterId_);
-            int64_t timestamp = NdnRtcUtils::millisecondTimestamp();
+            boost::int64_t timestamp = NdnRtcUtils::millisecondTimestamp();
 #ifdef TEST_USE_THREAD
             captureMutex_.lock();
             deliverFrame_.CopyFrame(capturedFrame_);
@@ -81,7 +81,7 @@ bool BaseCapturer::process()
             {
                 if (lastFrameTimestamp_)
                 {
-                    int64_t delay = timestamp - lastFrameTimestamp_;
+                    boost::int64_t delay = timestamp - lastFrameTimestamp_;
 
                     ((delay > FRAME_DELAY_DEADLINE) ? LogWarnC : LogTraceC)
                     << "captured frame delivery delay " << delay << std::endl;

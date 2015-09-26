@@ -135,15 +135,15 @@ namespace ndnrtc
                     State
                     getState() const { return state_; };
                     
-                    int64_t
+                    boost::int64_t
                     getRequestTimeUsec()
                     { return requestTimeUsec_; }
                     
-                    int64_t
+                    boost::int64_t
                     getArrivalTimeUsec()
                     { return arrivalTimeUsec_; }
                     
-                    int64_t
+                    boost::int64_t
                     getRoundTripDelayUsec()
                     {
                         if (arrivalTimeUsec_ <= 0 || requestTimeUsec_ <= 0)
@@ -186,7 +186,7 @@ namespace ndnrtc
                                                 // (without segment header)
                     unsigned char* dataPtr_;    // pointer to the payload data
                     State state_;
-                    int64_t requestTimeUsec_, // local timestamp when the interest
+                    boost::int64_t requestTimeUsec_, // local timestamp when the interest
                                               // for this segment was issued
                     arrivalTimeUsec_, // local timestamp when data for this
                                       // segment has arrived
@@ -350,17 +350,17 @@ namespace ndnrtc
                  * current playhead. In other words - playback deadline defines 
                  * delay after which current frame should be played out
                  */
-                int64_t
+                boost::int64_t
                 getPlaybackDeadline() const { return playbackDeadline_; }
                 
                 /**
                  * Updates slot's playback deadline
                  */
                 void
-                setPlaybackDeadline(int64_t playbackDeadline)
+                setPlaybackDeadline(boost::int64_t playbackDeadline)
                 { playbackDeadline_ = playbackDeadline; }
                 
-                int64_t
+                boost::int64_t
                 getProducerTimestamp() const
                 {
                     if (consistency_&HeaderMeta)
@@ -488,11 +488,11 @@ namespace ndnrtc
                 void
                 incremenrRtxNum() { nRtx_++; }
                 
-                int64_t
+                boost::int64_t
                 getLifetime() DEPRECATED
                 { return (requestTimeUsec_ > 0)?NdnRtcUtils::millisecondTimestamp()-requestTimeUsec_/1000.:0;}
                 
-                int64_t
+                boost::int64_t
                 getAssemblingTime()
                 { return ((readyTimeUsec_ >= 0) ? (readyTimeUsec_-firstSegmentTimeUsec_)/1000. : 0); }
                 
@@ -556,8 +556,8 @@ namespace ndnrtc
                                 packetPlaybackNumber_;
                 Namespace packetNamespace_;
 
-                int64_t requestTimeUsec_, firstSegmentTimeUsec_, readyTimeUsec_;
-                int64_t playbackDeadline_, producerTimestamp_;
+                boost::int64_t requestTimeUsec_, firstSegmentTimeUsec_, readyTimeUsec_;
+                boost::int64_t playbackDeadline_, producerTimestamp_;
                 double packetRate_;
 
                 int nSegmentsReady_ = 0, nSegmentsPending_ = 0,
@@ -798,13 +798,13 @@ namespace ndnrtc
              * in order to start playback
              */
             void
-            setTargetSize(int64_t targetSizeMs)
+            setTargetSize(boost::int64_t targetSizeMs)
             {
                 targetSizeMs_ = targetSizeMs;
                 statStorage_->updateIndicator(statistics::Indicator::BufferTargetSize, targetSizeMs_);
             }
 
-            int64_t
+            boost::int64_t
             getTargetSize() { return targetSizeMs_; }
             
             /**
@@ -825,13 +825,13 @@ namespace ndnrtc
             /**
              * Estimates current buffer size based on current active slots
              */
-            int64_t
+            boost::int64_t
             getEstimatedBufferSize();
 
             /**
              * Returns actually playbale frames duration from buffer
              */
-            int64_t
+            boost::int64_t
             getPlayableBufferSize();
             
             /**
@@ -942,7 +942,7 @@ namespace ndnrtc
             public:
                 PlaybackQueue(double playbackRate = 30.);
                 
-                int64_t
+                boost::int64_t
                 getPlaybackDuration(bool estimate = true);
                 
                 void
@@ -966,7 +966,7 @@ namespace ndnrtc
                 void
                 clear();
                 
-                int64_t
+                boost::int64_t
                 getInferredFrameDuration()
                 { /*return lastFrameDuration_;*/
                     return ceil(1000./playbackRate_);
@@ -980,7 +980,7 @@ namespace ndnrtc
                 
             private:
                 double playbackRate_;
-                int64_t lastFrameDuration_;
+                boost::int64_t lastFrameDuration_;
                 FrameBuffer::Slot::PlaybackComparator comparator_;
                 
                 void
@@ -997,8 +997,8 @@ namespace ndnrtc
             // be skipped (in case of old slot acquisition)
             bool skipFrame_ = false;
             boost::shared_ptr<Slot> playbackSlot_;
-            int64_t targetSizeMs_;
-            int64_t estimatedSizeMs_;
+            boost::int64_t targetSizeMs_;
+            boost::int64_t estimatedSizeMs_;
             bool isEstimationNeeded_;
             bool isWaitingForRightmost_;
             bool retransmissionsEnabled_;

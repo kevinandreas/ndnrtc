@@ -52,7 +52,7 @@ VideoPlayout::start(int playbackAdjustment)
 //******************************************************************************
 #pragma mark - private
 bool
-VideoPlayout::playbackPacket(int64_t packetTsLocal, PacketData* data,
+VideoPlayout::playbackPacket(boost::int64_t packetTsLocal, PacketData* data,
                              PacketNumber playbackPacketNo,
                              PacketNumber sequencePacketNo,
                              PacketNumber pairedPacketNo,

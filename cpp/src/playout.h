@@ -64,10 +64,10 @@ namespace ndnrtc{
             bool isRunning_;
             
             bool isInferredPlayback_;
-            int64_t lastPacketTs_;
+            boost::int64_t lastPacketTs_;
             unsigned int inferredDelay_;
             int playbackAdjustment_;
-            int64_t bufferCheckTs_;
+            boost::int64_t bufferCheckTs_;
             
             Consumer* consumer_;
             boost::shared_ptr<FrameBuffer> frameBuffer_;
@@ -91,7 +91,7 @@ namespace ndnrtc{
              * segments for this packet
              */
             virtual bool
-            playbackPacket(int64_t packetTsLocal, PacketData* data,
+            playbackPacket(boost::int64_t packetTsLocal, PacketData* data,
                            PacketNumber playbackPacketNo,
                            PacketNumber sequencePacketNo,
                            PacketNumber pairedPacketNo,
@@ -104,7 +104,7 @@ namespace ndnrtc{
             playbackDelayAdjustment(int playbackDelay);
             
             int
-            avSyncAdjustment(int64_t nowTimestamp, int playbackDelay);
+            avSyncAdjustment(boost::int64_t nowTimestamp, int playbackDelay);
             
             bool
             processPlayout();
