@@ -105,6 +105,7 @@ VideoStream::init(const MediaStreamSettings& streamSettings)
 {
     if (RESULT_GOOD(MediaStream::init(streamSettings)))
     {
+        encodingBarrier_ = new boost::barrier(threads_.size());
         capturer_->setLogger(logger_);
         isProcessing_ = true;
         
@@ -154,7 +155,12 @@ void
 VideoStream::release()
 {
     MediaStream::release();
-    isProcessing_ = false;
+    
+    if (isProcessing_)
+    {
+        delete encodingBarrier_;
+        isProcessing_ = false;
+    }
 }
 
 int
@@ -165,6 +171,7 @@ VideoStream::addNewMediaThread(const MediaThreadParams* params)
     
     threadSettings.useFec_ = settings_.useFec_;
     threadSettings.threadParams_ = params;
+    threadSettings.threadCallback_ = this;
     
     shared_ptr<VideoThread> videoThread(new VideoThread());
     videoThread->registerCallback(this);
@@ -176,7 +183,11 @@ VideoStream::addNewMediaThread(const MediaThreadParams* params)
         return RESULT_ERR;
     }
     else
+    {
         threads_[videoThread->getPrefix()] = videoThread;
+        deltaFrameSync_[params->threadName_] = 0;
+        keyFrameSync_[params->threadName_] = 0;
+    }
 
     return RESULT_OK;
 }
@@ -200,6 +211,47 @@ VideoStream::onDeliverFrame(WebRtcVideoFrame &frame,
     }
 }
 
+void
+VideoStream::onFrameDropped(const std::string& threadName)
+{
+    encodingBarrier_->wait();
+}
+
+void
+VideoStream::onFrameEncoded(const std::string& threadName,
+                            const FrameNumber& frameNo,
+                            bool isKey)
+{
+    if (isKey)
+        keyFrameSync_[threadName] = frameNo;
+    else
+        deltaFrameSync_[threadName] = frameNo;
+    
+    encodingBarrier_->wait();
+    
+#ifdef NDN_TRACE
+    std::stringstream ss1, ss2;
+    ss1 << "K: ";
+    ss2 << "D: ";
+    
+    for (auto it:keyFrameSync_) ss1 << it.first << "-" << it.second << " ";
+    for (auto it:deltaFrameSync_) ss2 << it.first << "-" << it.second << " ";
+        
+    LogDebugC << "thread sync list: " << ss1.str() << ss2.str() << std::endl;
+#endif
+}
+
+ThreadSyncList
+VideoStream::getFrameSyncList(bool isKey)
+{
+    ThreadSyncList sl;
+    std::map<std::string, PacketNumber> &mapList = (isKey)?keyFrameSync_:deltaFrameSync_;
+    
+    copy(mapList.begin(), mapList.end(), std::back_inserter(sl));
+    
+    return sl;
+}
+
 //******************************************************************************
 AudioStream::AudioStream():
 MediaStream(),
@@ -212,7 +264,7 @@ audioCapturer_(new AudioCapturer())
 
 AudioStream::~AudioStream()
 {
-    audioCapturer_->stopCapture();
+//    audioCapturer_->stopCapture();
 }
 
 int
@@ -222,7 +274,6 @@ AudioStream::init(const MediaStreamSettings& streamSettings)
     {
         isProcessing_ = true;
         audioCapturer_->setLogger(logger_);
-        audioCapturer_->init();
         audioCapturer_->startCapture();
         
         return RESULT_OK;
@@ -234,8 +285,8 @@ AudioStream::init(const MediaStreamSettings& streamSettings)
 void
 AudioStream::release()
 {
+    audioCapturer_->stopCapture();
     MediaStream::release();
-//    audioCapturer_->stopCapture();
     isProcessing_ = false;
 }
 
