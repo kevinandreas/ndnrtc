@@ -179,24 +179,39 @@ VideoConsumer::onChallengePhaseStarted(unsigned int threadId,
                                        double challengeLevel)
 {
     
+    std::string threadName = settings_.streamParams_.mediaThreads_[threadId]->threadName_;
+    FrameSegmentsInfo segInfo = settings_.streamParams_.mediaThreads_[threadId]->getSegmentsInfo();
+    
+    pipeliner_->startChallenging(threadName, challengeLevel, segInfo);
 }
 
 void
 VideoConsumer::onChallengePhaseStopped()
 {
-    
+    pipeliner_->stopChallenging();
 }
 
 void
 VideoConsumer::onThreadChallenge(double challengeLevel)
 {
-    
+    pipeliner_->newChallengeLevel(challengeLevel);
 }
 
 void
 VideoConsumer::onThreadShouldSwitch(unsigned int threadId)
 {
+    currentThreadIdx_ = threadId;
     
+    LogInfoC << "ARC: switching to " << getCurrentThreadName()
+    << " initiated" << std::endl;
+    
+    pipeliner_->threadSwitched();
+    
+    if (observer_)
+    {
+        lock_guard<mutex> scopedLock(observerMutex_);
+        observer_->onThreadSwitched(getCurrentThreadName());
+    }
 }
 
 void

@@ -23,6 +23,8 @@ namespace ndnrtc {
     namespace new_api {
         
         class BufferEstimator;
+        class ChallengePipeliner;
+        class InterestQueue;
         
         class IPipelinerCallback
         {
@@ -38,6 +40,16 @@ namespace ndnrtc {
             
             virtual void
             onDataArrived(const boost::shared_ptr<ndn::Data>& data) = 0;
+        };
+        
+        class IChallengePipelinerCallback
+        {
+        public:
+            virtual void
+            onChallengeDataArrived(const boost::shared_ptr<ndn::Data>& data) = 0;
+            
+            virtual boost::shared_ptr<InterestQueue>
+            getInterestQueue() = 0;
         };
         
         class PipelinerWindow : public NdnRtcComponent
@@ -85,7 +97,8 @@ namespace ndnrtc {
         class Pipeliner2 : public NdnRtcComponent,
                            public IFrameBufferCallback,
                            public statistics::StatObject,
-                           public IPacketAssembler
+                           public IPacketAssembler,
+                           public IChallengePipelinerCallback
         {
         public:
             typedef enum _State {
@@ -154,12 +167,17 @@ namespace ndnrtc {
             }
             
             void
-            setLogger(ndnlog::new_api::Logger* logger)
-            {
-                NdnRtcComponent::setLogger(logger);
-                stabilityEstimator_.setLogger(logger);
-                rttChangeEstimator_.setLogger(logger);
-            }
+            setLogger(ndnlog::new_api::Logger* logger);
+            
+            void
+            startChallenging(std::string threadName,
+                             double challengeLevel,
+                             const FrameSegmentsInfo& segInfo);
+            void
+            stopChallenging();
+            
+            void
+            newChallengeLevel(double challengeLevel);
             
         protected:
             State state_;
@@ -173,6 +191,7 @@ namespace ndnrtc {
             
             int deltaSegnumEstimatorId_, keySegnumEstimatorId_;
             int deltaParitySegnumEstimatorId_, keyParitySegnumEstimatorId_;
+            
             unsigned int rtxFreqMeterId_;
             PacketNumber keyFrameSeqNo_, deltaFrameSeqNo_;
             FrameSegmentsInfo frameSegmentsInfo_;
@@ -193,7 +212,8 @@ namespace ndnrtc {
             PacketNumber exclusionPacket_;
             bool waitForThreadTransition_, waitNewThreadStarted_, waitOldThreadComplete_;
             IRateAdaptationModule::ArcIndicators currentArcIndicators_;
-            std::string currentThreadName_, oldThreadName_, challengeThreadName_;
+            std::string currentThreadName_, oldThreadName_;
+            boost::shared_ptr<ChallengePipeliner> challengePipeliner_;
             
             // incoming data statistics
             unsigned int dataMeterId_, segmentFreqMeterId_;
@@ -318,6 +338,41 @@ namespace ndnrtc {
             
             void
             checkThreadSwitchEvents(const boost::shared_ptr<ndn::Data>& data);
+            
+            // IChallengePipelinerCallback
+            void
+            onChallengeDataArrived(const boost::shared_ptr<Data>& data);
+            
+            boost::shared_ptr<InterestQueue>
+            getInterestQueue();
+        };
+        
+        class ChallengePipeliner : public ndnlog::new_api::ILoggingObject
+        {
+        public:
+            ChallengePipeliner(IChallengePipelinerCallback* const callback);
+            ~ChallengePipeliner(){}
+            
+            void start(const Name& threadPrefix, double challengeLevel,
+                       const FrameSegmentsInfo& segInfo,
+                       PacketNumber startDelta, PacketNumber startKey);
+            void stop();
+            void newChallengeLevel(double challengeLevel);
+            void requestChallengingData(bool isKey);
+            
+        private:
+            IChallengePipelinerCallback *callback_;
+            bool isRunning_;
+            boost::shared_ptr<Consumer> consumer_;
+            double challengeLevel_, dSeg_, dpSeg_, kSeg_, kpSeg_;
+            Name deltaPrefix_, keyPrefix_;
+            int dEst_, dpEst_, kEst_, kpEst_;
+            PacketNumber deltaNo_, keyNo_;
+            
+            void onData(const boost::shared_ptr<const Interest>& interest,
+                        const boost::shared_ptr<Data>& data);
+            void onTimeout(const boost::shared_ptr<const Interest>& interest);
+            void requestSegments(double& nSeg, const Name& framePrefix);
         };
     }
 }

@@ -22,7 +22,7 @@ using namespace boost;
 using namespace webrtc;
 using namespace ndnrtc;
 using namespace ndnrtc::new_api;
-using namespace ndnrtc::new_api::statistics;
+using namespace statistics;
 using namespace ndnlog;
 
 const double Pipeliner2::SegmentsAvgNumDelta = 8.;
@@ -46,7 +46,7 @@ const FrameSegmentsInfo Pipeliner2::DefaultSegmentsInfo = {
 //******************************************************************************
 //******************************************************************************
 #pragma mark - public
-ndnrtc::new_api::Pipeliner2::Pipeliner2(const boost::shared_ptr<Consumer>& consumer,
+Pipeliner2::Pipeliner2(const boost::shared_ptr<Consumer>& consumer,
                                               const boost::shared_ptr<statistics::StatisticsStorage>& statStorage,
                                               const FrameSegmentsInfo& frameSegmentsInfo):
 StatObject(statStorage),
@@ -72,15 +72,16 @@ waitForThreadTransition_(false),
 waitNewThreadStarted_(false),
 waitOldThreadComplete_(false)
 {
+    challengePipeliner_.reset(new ChallengePipeliner(this));
     switchToState(StateInactive);
 }
 
-ndnrtc::new_api::Pipeliner2::~Pipeliner2()
+Pipeliner2::~Pipeliner2()
 {
 }
 
 int
-ndnrtc::new_api::Pipeliner2::initialize()
+Pipeliner2::initialize()
 {
     ndnAssembler_ = consumer_->getPacketAssembler();
     
@@ -125,13 +126,13 @@ Pipeliner2::stop()
 }
 
 void
-ndnrtc::new_api::Pipeliner2::triggerRebuffering()
+Pipeliner2::triggerRebuffering()
 {
     rebuffer();
 }
 
 bool
-ndnrtc::new_api::Pipeliner2::threadSwitched()
+Pipeliner2::threadSwitched()
 {
     // if thread sycn list is available - use it
     if (deltaSyncList_.size() && keySyncList_.size())
@@ -163,9 +164,53 @@ ndnrtc::new_api::Pipeliner2::threadSwitched()
     return true;
 }
 
+void
+Pipeliner2::setLogger(ndnlog::new_api::Logger* logger)
+{
+    NdnRtcComponent::setLogger(logger);
+    challengePipeliner_->setLogger(logger);
+    stabilityEstimator_.setLogger(logger);
+    rttChangeEstimator_.setLogger(logger);
+}
+
+void
+Pipeliner2::startChallenging(std::string threadName,
+                                              double challengeLevel,
+                                              const FrameSegmentsInfo& segInfo)
+{
+    if (state_ == StateFetching)
+    {
+        switchToState(StateChallenging);
+        
+        std::string challengeThreadPrefix = NdnRtcNamespace::getThreadPrefix(consumer_->getPrefix(), threadName);
+        
+        challengePipeliner_->start(Name(challengeThreadPrefix), challengeLevel, segInfo,
+                                   deltaSyncList_[threadName], keySyncList_[threadName]);
+    }
+}
+
+void
+Pipeliner2::stopChallenging()
+{
+    if (state_ == StateChallenging)
+    {
+        switchToState(StateFetching);
+        challengePipeliner_->stop();
+    }
+}
+
+void
+Pipeliner2::newChallengeLevel(double challengeLevel)
+{
+    if (state_ == StateChallenging)
+    {
+        challengePipeliner_->newChallengeLevel(challengeLevel);
+    }
+}
+
 #pragma mark - protected
 void
-ndnrtc::new_api::Pipeliner2::updateSegnumEstimation(FrameBuffer::Slot::Namespace frameNs,
+Pipeliner2::updateSegnumEstimation(FrameBuffer::Slot::Namespace frameNs,
                                                        int nSegments, bool isParity)
 {
     Indicator statIndicator;
@@ -187,7 +232,7 @@ ndnrtc::new_api::Pipeliner2::updateSegnumEstimation(FrameBuffer::Slot::Namespace
 }
 
 void
-ndnrtc::new_api::Pipeliner2::requestNextKey(PacketNumber& keyFrameNo)
+Pipeliner2::requestNextKey(PacketNumber& keyFrameNo)
 {
     LogTraceC << "request key " << keyFrameNo << std::endl;
     (*statStorage_)[Indicator::RequestedNum]++;
@@ -201,7 +246,7 @@ ndnrtc::new_api::Pipeliner2::requestNextKey(PacketNumber& keyFrameNo)
 }
 
 void
-ndnrtc::new_api::Pipeliner2::requestNextDelta(PacketNumber& deltaFrameNo)
+Pipeliner2::requestNextDelta(PacketNumber& deltaFrameNo)
 {
     (*statStorage_)[Indicator::RequestedNum]++;
     prefetchFrame(deltaFramesPrefix_,
@@ -211,7 +256,7 @@ ndnrtc::new_api::Pipeliner2::requestNextDelta(PacketNumber& deltaFrameNo)
 }
 
 void
-ndnrtc::new_api::Pipeliner2::expressRange(Interest& interest,
+Pipeliner2::expressRange(Interest& interest,
                                              SegmentNumber startNo,
                                              SegmentNumber endNo,
                                              int64_t priority, bool isParity)
@@ -241,7 +286,7 @@ ndnrtc::new_api::Pipeliner2::expressRange(Interest& interest,
 }
 
 void
-ndnrtc::new_api::Pipeliner2::express(Interest &interest, int64_t priority)
+Pipeliner2::express(Interest &interest, int64_t priority)
 {
     frameBuffer_->interestIssued(interest);
     
@@ -252,7 +297,7 @@ ndnrtc::new_api::Pipeliner2::express(Interest &interest, int64_t priority)
 }
 
 void
-ndnrtc::new_api::Pipeliner2::prefetchFrame(const ndn::Name &basePrefix,
+Pipeliner2::prefetchFrame(const ndn::Name &basePrefix,
                                               PacketNumber packetNo,
                                               int prefetchSize, int parityPrefetchSize,
                                               FrameBuffer::Slot::Namespace nspc)
@@ -282,7 +327,7 @@ ndnrtc::new_api::Pipeliner2::prefetchFrame(const ndn::Name &basePrefix,
 }
 
 shared_ptr<Interest>
-ndnrtc::new_api::Pipeliner2::getDefaultInterest(const ndn::Name &prefix, int64_t timeoutMs)
+Pipeliner2::getDefaultInterest(const ndn::Name &prefix, int64_t timeoutMs)
 {
     shared_ptr<Interest> interest(new Interest(prefix, (timeoutMs == 0)?consumer_->getParameters().interestLifetime_:timeoutMs));
     interest->setMustBeFresh(true);
@@ -291,7 +336,7 @@ ndnrtc::new_api::Pipeliner2::getDefaultInterest(const ndn::Name &prefix, int64_t
 }
 
 int64_t
-ndnrtc::new_api::Pipeliner2::getInterestLifetime(int64_t playbackDeadline,
+Pipeliner2::getInterestLifetime(int64_t playbackDeadline,
                                                 FrameBuffer::Slot::Namespace nspc,
                                                 bool rtx)
 {
@@ -320,7 +365,7 @@ ndnrtc::new_api::Pipeliner2::getInterestLifetime(int64_t playbackDeadline,
 }
 
 shared_ptr<Interest>
-ndnrtc::new_api::Pipeliner2::getInterestForRightMost(int64_t timeoutMs,
+Pipeliner2::getInterestForRightMost(int64_t timeoutMs,
                                                         bool isKeyNamespace,
                                                         PacketNumber exclude)
 {
@@ -340,13 +385,13 @@ ndnrtc::new_api::Pipeliner2::getInterestForRightMost(int64_t timeoutMs,
 }
 
 void
-ndnrtc::new_api::Pipeliner2::onRetransmissionNeeded(FrameBuffer::Slot* slot)
+Pipeliner2::onRetransmissionNeeded(FrameBuffer::Slot* slot)
 {
     if (consumer_->getGeneralParameters().useRtx_)
     {
         LogTraceC << "retransmission needed for " << slot->dump() << std::endl;
         
-        std::vector<shared_ptr<ndnrtc::new_api::FrameBuffer::Slot::Segment>>
+        std::vector<shared_ptr<FrameBuffer::Slot::Segment>>
         missingSegments = slot->getPendingSegments();
         
         if (missingSegments.size() == 0)
@@ -360,10 +405,10 @@ ndnrtc::new_api::Pipeliner2::onRetransmissionNeeded(FrameBuffer::Slot* slot)
             << " total " << missingSegments.size() << " interests"
             << std::endl;
             
-            std::vector<shared_ptr<ndnrtc::new_api::FrameBuffer::Slot::Segment>>::iterator it;
+            std::vector<shared_ptr<FrameBuffer::Slot::Segment>>::iterator it;
             for (it = missingSegments.begin(); it != missingSegments.end(); ++it)
             {
-                shared_ptr<ndnrtc::new_api::FrameBuffer::Slot::Segment> segment = *it;
+                shared_ptr<FrameBuffer::Slot::Segment> segment = *it;
                 shared_ptr<Interest> segmentInterest;
 
                 segmentInterest = getDefaultInterest(segment->getPrefix());
@@ -383,24 +428,27 @@ ndnrtc::new_api::Pipeliner2::onRetransmissionNeeded(FrameBuffer::Slot* slot)
 }
 
 void
-ndnrtc::new_api::Pipeliner2::onKeyNeeded(PacketNumber seqNo)
+Pipeliner2::onKeyNeeded(PacketNumber seqNo)
 {
     if (keyFrameSeqNo_ <= seqNo)
     {
         keyFrameSeqNo_ = seqNo;
         requestNextKey(keyFrameSeqNo_);
+        
+        if (state_ == StateChallenging)
+            challengePipeliner_->requestChallengingData(true);
     }
 }
 
 void
-ndnrtc::new_api::Pipeliner2::requestMissing
-(const shared_ptr<ndnrtc::new_api::FrameBuffer::Slot> &slot,
+Pipeliner2::requestMissing
+(const shared_ptr<FrameBuffer::Slot> &slot,
  int64_t lifetime, int64_t priority)
 {
     // synchronize with buffer
     frameBuffer_->synchronizeAcquire();
     
-    std::vector<shared_ptr<ndnrtc::new_api::FrameBuffer::Slot::Segment> >
+    std::vector<shared_ptr<FrameBuffer::Slot::Segment> >
     missingSegments = slot->getMissingSegments();
     
     if (missingSegments.size() == 0)
@@ -411,10 +459,10 @@ ndnrtc::new_api::Pipeliner2::requestMissing
         << " total " << missingSegments.size() << " interests"
         << std::endl;
         
-    std::vector<shared_ptr<ndnrtc::new_api::FrameBuffer::Slot::Segment> >::iterator it;
+    std::vector<shared_ptr<FrameBuffer::Slot::Segment> >::iterator it;
     for (it = missingSegments.begin(); it != missingSegments.end(); ++it)
     {
-        shared_ptr<ndnrtc::new_api::FrameBuffer::Slot::Segment> segment = *it;
+        shared_ptr<FrameBuffer::Slot::Segment> segment = *it;
         
         shared_ptr<Interest> segmentInterest;
         
@@ -435,7 +483,7 @@ ndnrtc::new_api::Pipeliner2::requestMissing
 }
 
 void
-ndnrtc::new_api::Pipeliner2::resetData()
+Pipeliner2::resetData()
 {
     deltaSegnumEstimatorId_ = NdnRtcUtils::setupMeanEstimator(0, frameSegmentsInfo_.deltaAvgSegNum_);
     keySegnumEstimatorId_ = NdnRtcUtils::setupMeanEstimator(0, frameSegmentsInfo_.keyAvgSegNum_);
@@ -467,7 +515,6 @@ ndnrtc::new_api::Pipeliner2::resetData()
 }
 
 //******************************************************************************
-
 void
 Pipeliner2::onData(const boost::shared_ptr<const Interest>& interest,
                    const boost::shared_ptr<Data>& data)
@@ -528,6 +575,10 @@ Pipeliner2::onData(const boost::shared_ptr<const Interest>& interest,
                 LogTraceC << "got outdated data after rebuffering " << data->getName() << std::endl;
                 break;
             }
+        } // fall through
+        case StateChallenging:
+        {
+            
         } // fall through
         case StateAdjust: // fall through
         case StateFetching:
@@ -906,6 +957,12 @@ Pipeliner2::askForSubsequentData(const boost::shared_ptr<Data>& data)
         }
             break;
             
+        case StateChallenging:
+        {
+            // do something?
+        }
+            break;
+            
         default:
             // nothing
             break;
@@ -1006,10 +1063,17 @@ Pipeliner2::askForSubsequentData(const boost::shared_ptr<Data>& data)
             callback_->onBufferingEnded();
     
     while (window_.canAskForData(deltaFrameSeqNo_))
+    {
         requestNextDelta(deltaFrameSeqNo_);
+        
+        if (state_ == StateChallenging)
+            challengePipeliner_->requestChallengingData(false);
+    }
+    
     (*statStorage_)[Indicator::W] = window_.getCurrentWindowSize();
 }
 
+//******************************************************************************
 unsigned int
 Pipeliner2::getCurrentMinimalLambda()
 {
@@ -1238,6 +1302,18 @@ Pipeliner2::checkThreadSwitchEvents(const boost::shared_ptr<ndn::Data>& data)
     }
 }
 
+void
+Pipeliner2::onChallengeDataArrived(const boost::shared_ptr<Data>& data)
+{
+    callback_->onDataArrived(data);
+}
+
+boost::shared_ptr<InterestQueue>
+Pipeliner2::getInterestQueue()
+{
+    return consumer_->getInterestQueue();
+}
+
 //******************************************************************************
 //******************************************************************************
 PipelinerWindow::PipelinerWindow():
@@ -1328,4 +1404,128 @@ PipelinerWindow::changeWindow(int delta)
     }
     
     return 0;
+}
+
+//******************************************************************************
+//******************************************************************************
+ChallengePipeliner::ChallengePipeliner(IChallengePipelinerCallback* const callback):
+callback_(callback),
+isRunning_(false)
+{
+}
+
+
+void
+ChallengePipeliner::start(const Name& threadPrefix, double challengeLevel,
+                          const FrameSegmentsInfo& segInfo,
+                          PacketNumber startDelta, PacketNumber startKey)
+{
+    isRunning_ = true;
+    
+    challengeLevel_ = challengeLevel;
+    dEst_ = NdnRtcUtils::setupMeanEstimator(0,segInfo.deltaAvgSegNum_);
+    dpEst_ = NdnRtcUtils::setupMeanEstimator(0, segInfo.deltaAvgParitySegNum_);
+    kEst_ = NdnRtcUtils::setupMeanEstimator(0, segInfo.keyAvgSegNum_);
+    kpEst_ = NdnRtcUtils::setupMeanEstimator(0, segInfo.keyAvgParitySegNum_);
+    deltaPrefix_ = NdnRtcNamespace::getThreadFramesPrefix(threadPrefix.toUri());
+    keyPrefix_ = NdnRtcNamespace::getThreadFramesPrefix(threadPrefix.toUri(), true);
+    deltaNo_ = startDelta;
+    keyNo_ = startKey;
+    dSeg_ = challengeLevel_ * segInfo.deltaAvgSegNum_;
+    dpSeg_ = challengeLevel_ * segInfo.deltaAvgParitySegNum_;
+    kSeg_ = challengeLevel_ * segInfo.keyAvgSegNum_;
+    kpSeg_ = challengeLevel_ * segInfo.keyAvgParitySegNum_;
+    
+    LogInfoC << "started challenge for " << threadPrefix << std::endl;
+}
+
+void
+ChallengePipeliner::stop()
+{
+    isRunning_ = false;
+    
+    NdnRtcUtils::releaseMeanEstimator(dEst_);
+    NdnRtcUtils::releaseMeanEstimator(dpEst_);
+    NdnRtcUtils::releaseMeanEstimator(kEst_);
+    NdnRtcUtils::releaseMeanEstimator(kpEst_);
+    
+    LogInfoC << "stopped" << std::endl;
+}
+
+void
+ChallengePipeliner::newChallengeLevel(double challengeLevel)
+{
+    challengeLevel_ = challengeLevel;
+    
+    LogInfoC << "set new challenging level " << challengeLevel_ << std::endl;
+}
+
+void
+ChallengePipeliner::requestChallengingData(bool isKey)
+{
+    Name prefix = (isKey)?keyPrefix_:deltaPrefix_;
+    PacketNumber& frameNo = (isKey)?keyNo_:deltaNo_;
+    double dataSegNum = NdnRtcUtils::currentMeanEstimation((isKey)?kEst_:dEst_);
+    double paritySegNum = NdnRtcUtils::currentMeanEstimation((isKey)?kpEst_:dpEst_);
+    double& dataSeg = (isKey)?kSeg_:dSeg_;
+    double& paritySeg = (isKey)?kpSeg_:dpSeg_;
+    
+    dataSeg += challengeLevel_ * dataSegNum;
+    paritySeg += challengeLevel_ * paritySegNum;
+    
+    Name framePrefix = Name(prefix).append(NdnRtcUtils::componentFromInt(frameNo));
+    Name dataPrefix = framePrefix;
+    NdnRtcNamespace::appendDataKind(dataPrefix, false);
+    Name parityPrefix = framePrefix;
+    NdnRtcNamespace::appendDataKind(parityPrefix, true);
+    
+    LogTraceC << "available seg # for challenge: "
+    << (isKey?"KEY ":"DELTA ")
+    << "data " << dataSeg
+    << " parity " << paritySeg << std::endl;
+    
+    requestSegments(dataSeg, dataPrefix);
+    requestSegments(paritySeg, parityPrefix);
+}
+
+void
+ChallengePipeliner::onData(const boost::shared_ptr<const Interest>& interest,
+                           const boost::shared_ptr<Data>& data)
+{
+    LogTraceC << "new challenge data " << data->getName() << std::endl;
+    
+    bool isKey = NdnRtcNamespace::isPrefix(data->getName(), keyPrefix_);
+    PrefixMetaInfo metaInfo;
+    PrefixMetaInfo::extractMetadata(data->getName(), metaInfo);
+
+    NdnRtcUtils::meanEstimatorNewValue((isKey)?kEst_:dEst_, metaInfo.totalSegmentsNum_);
+    NdnRtcUtils::meanEstimatorNewValue((isKey)?kpEst_:dpEst_, metaInfo.paritySegmentsNum_);
+    callback_->onChallengeDataArrived(data);
+}
+
+void
+ChallengePipeliner::onTimeout(const boost::shared_ptr<const Interest>& interest)
+{
+    
+}
+
+void
+ChallengePipeliner::requestSegments(double& nSeg, const Name& framePrefix)
+{
+    int segIdx = 0;
+    
+    while (nSeg > 1)
+    {
+        Name segPrefix(framePrefix);
+        segPrefix.appendSegment(segIdx);
+        
+        Interest i(segPrefix, 2000);
+        i.setMustBeFresh(true);
+        callback_->getInterestQueue()->enqueueInterest(i,
+                                                       Priority::fromAbsolutePriority(1000),
+                                                       boost::bind(&ChallengePipeliner::onData, this, _1, _2),
+                                                       bind(&ChallengePipeliner::onTimeout, this, _1));
+        
+        nSeg -= 1;
+    }
 }
