@@ -10,6 +10,8 @@
 
 using namespace ndnrtc;
 
+const ArcModule::ArcIndicators ArcModule::ZeroIndicators = {0,0.,0.,0.,0.,0.,0.,0.,ConsumerPhaseInactive};
+
 int ArcModule::initialize(IRateAdaptationModuleCallback* const callback,
 						const CodecMode& codecMode,
         				std::vector<ThreadEntry> mediaThreads)
@@ -18,21 +20,21 @@ int ArcModule::initialize(IRateAdaptationModuleCallback* const callback,
 	return 0;
 }
         
-void interestExpressed(const std::string &name,
+void ArcModule::interestExpressed(const std::string &name,
                                unsigned int threadId)
 {}
 
-void interestRetransmit(const std::string &name,
+void ArcModule::interestRetransmit(const std::string &name,
                              	unsigned int threadId)
 {}
 
-void dataReceived(const std::string &name,
+void ArcModule::dataReceived(const std::string &name,
                           unsigned int threadId,
                           unsigned int ndnPacketSize)
 {}
 
-void updateIndicators(const ArcModule::ArcIndicators& indicators)
+void ArcModule::updateIndicators(const ArcModule::ArcIndicators& indicators)
 {}
 
-void reportThreadEvent(const ArcModule::ThreadEvent& event)
+void ArcModule::reportThreadEvent(const ArcModule::ThreadEvent& event)
 {}

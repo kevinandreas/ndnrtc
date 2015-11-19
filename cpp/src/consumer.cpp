@@ -326,6 +326,11 @@ Consumer::onInitialDataArrived()
     }
 }
 
+void
+Consumer::onDataArrived(const boost::shared_ptr<ndn::Data>& data)
+{
+}
+
 IPacketAssembler*
 Consumer::getPacketAssembler()
 {
@@ -340,13 +345,13 @@ Consumer::getPacketAssembler()
 int
 Consumer::getThreadIdx(const std::string& threadName)
 {
-    int idx = -1;
+    if (threadIdxMap_.size() == 0)
+    {
+        int idx = -1;
     
-    for (int i = 0; i < settings_.streamParams_.mediaThreads_.size(); i++)
-        if (settings_.streamParams_.mediaThreads_[i]->threadName_ == threadName)
-        {
-            idx = i;
-        }
+        for (int i = 0; i < settings_.streamParams_.mediaThreads_.size(); i++)
+            threadIdxMap_[settings_.streamParams_.mediaThreads_[i]->threadName_] = i;
+    }
     
-    return idx;
+    return (threadIdxMap_.find(threadName) != threadIdxMap_.end()) ? threadIdxMap_[threadName] : -1;
 }

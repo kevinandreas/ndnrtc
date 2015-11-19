@@ -17,6 +17,7 @@
 #include "chase-estimation.h"
 #include "frame-buffer.h"
 #include "ndnrtc-object.h"
+#include "arc-interface.h"
 
 namespace ndnrtc {
     namespace new_api {
@@ -34,6 +35,9 @@ namespace ndnrtc {
             
             virtual void
             onStateChanged(const int& oldState, const int& newState) = 0;
+            
+            virtual void
+            onDataArrived(const boost::shared_ptr<ndn::Data>& data) = 0;
         };
         
         class PipelinerWindow : public NdnRtcComponent
@@ -90,7 +94,8 @@ namespace ndnrtc {
                 StateChasing = 1,
                 StateAdjust = 2,
                 StateBuffering = 3,
-                StateFetching = 4
+                StateFetching = 4,
+                StateChallenging = 5
             } State;
             
             static const FrameSegmentsInfo DefaultSegmentsInfo;
@@ -172,7 +177,6 @@ namespace ndnrtc {
             PacketNumber keyFrameSeqNo_, deltaFrameSeqNo_;
             FrameSegmentsInfo frameSegmentsInfo_;
             
-            unsigned int streamId_; // currently fetched stream id
             bool useKeyNamespace_;
             int64_t recoveryCheckpointTimestamp_, startPhaseTimestamp_;
             std::map<std::string, PacketNumber> deltaSyncList_, keySyncList_;
@@ -184,37 +188,19 @@ namespace ndnrtc {
             uint64_t timestamp_;
             bool waitForChange_, waitForStability_;
             unsigned int failedWindow_;
-            FrameNumber seedFrameNo_;
+            FrameNumber seedFrameNo_, lastFrameOldThread_;
             ndn::Interest rightmostInterest_;
             PacketNumber exclusionPacket_;
-            bool waitForThreadTransition_;
+            bool waitForThreadTransition_, waitNewThreadStarted_, waitOldThreadComplete_;
+            IRateAdaptationModule::ArcIndicators currentArcIndicators_;
+            std::string currentThreadName_, oldThreadName_, challengeThreadName_;
             
             // incoming data statistics
             unsigned int dataMeterId_, segmentFreqMeterId_;
             unsigned int nDataReceived_ = 0, nTimeouts_ = 0;
             
             void
-            switchToState(State newState)
-            {
-                State oldState = state_;
-                state_ = newState;
-                
-                if (oldState != newState)
-                {
-                    int64_t timestamp = NdnRtcUtils::millisecondTimestamp();
-                    int64_t phaseDuration = timestamp - startPhaseTimestamp_;
-                    startPhaseTimestamp_ = timestamp;
-                    
-                    ((oldState == StateChasing) ? LogInfoC : LogDebugC)
-                    << "phase " << toString(oldState) << " finished in "
-                    << phaseDuration << " msec" << std::endl;
-                    
-                    LogDebugC << "new state " << toString(state_) << std::endl;
-                    
-                    if (callback_)
-                        callback_->onStateChanged(oldState, state_);
-                }
-            }
+            switchToState(State newState);
             
             std::string
             toString(State state)
@@ -327,6 +313,11 @@ namespace ndnrtc {
             void
             performThreadTransition();
             
+            void
+            updateArcIndicators();
+            
+            void
+            checkThreadSwitchEvents(const boost::shared_ptr<ndn::Data>& data);
         };
     }
 }

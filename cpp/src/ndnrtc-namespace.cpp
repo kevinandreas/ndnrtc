@@ -577,3 +577,13 @@ std::string NdnRtcNamespace::getUserName(const std::string& prefix)
         
     return "";
 }
+
+std::string NdnRtcNamespace::getThreadName(const Name& prefix)
+{
+    int streamCompPos = NdnRtcNamespace::findComponent(prefix, NameComponents::NameComponentUserStreams);
+    
+    if (streamCompPos + 2 < prefix.size())
+        return prefix[streamCompPos+2].toEscapedString();
+    
+    return "";
+}

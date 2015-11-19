@@ -11,14 +11,18 @@
 #ifndef __ndnrtc__video_consumer__
 #define __ndnrtc__video_consumer__
 
+#include "arc-interface.h"
 #include "consumer.h"
 #include "video-renderer.h"
+#include "interest-queue.h"
 
 namespace ndnrtc {
     namespace new_api {
         class NdnVideoDecoder;
         
-        class VideoConsumer : public Consumer
+        class VideoConsumer : public Consumer,
+                              public IRateAdaptationModuleCallback,
+                              public IInterestQueueCallback
         {
         public:
             VideoConsumer(const GeneralParams& generalParams,
@@ -51,9 +55,13 @@ namespace ndnrtc {
             
             void
             triggerRebuffering();
+            
+            int
+            getThreadId(std::string threadName);
 
         private:
             boost::shared_ptr<NdnVideoDecoder> decoder_;
+            std::vector<IRateAdaptationModule::ThreadEntry> arcThreadArray_;
             
             boost::shared_ptr<IVideoRenderer>
             getRenderer()
@@ -66,6 +74,31 @@ namespace ndnrtc {
             
             void
             onTimeout(const boost::shared_ptr<const Interest>& interest);
+            
+            void
+            initArc();
+
+            // IRateAdaptationModuleCallback
+            void
+            onChallengePhaseStarted(unsigned int threadId,
+                                    double challengeLevel);
+            
+            void
+            onChallengePhaseStopped();
+            
+            void
+            onThreadChallenge(double challengeLevel);
+            
+            void
+            onThreadShouldSwitch(unsigned int threadId);
+            
+            // IInterestQueueCallback
+            void
+            onInterestIssued(const boost::shared_ptr<const ndn::Interest>&);
+            
+            // IPipelinerCallback
+            void
+            onDataArrived(const boost::shared_ptr<ndn::Data>& data);
         };
     }
 }

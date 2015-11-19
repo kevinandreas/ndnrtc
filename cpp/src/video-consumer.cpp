@@ -17,6 +17,8 @@
 #include "video-playout.h"
 #include "interest-queue.h"
 #include "video-decoder.h"
+#include "arc-module.h"
+#include "ndnrtc-namespace.h"
 
 using namespace boost;
 using namespace ndnlog;
@@ -54,6 +56,9 @@ VideoConsumer::init(const ConsumerSettings& settings,
 
     if (RESULT_GOOD(Consumer::init(settings, threadName)))
     {
+        initArc();
+        interestQueue_->registerCallback(this);
+        
         pipeliner_->setUseKeyNamespace(true);
         pipeliner_->initialize();
         
@@ -155,4 +160,57 @@ VideoConsumer::onTimeout(const shared_ptr<const Interest>& interest)
 #endif
 }
 
+void
+VideoConsumer::initArc()
+{
+    for (int i = 0; i < settings_.streamParams_.mediaThreads_.size(); i++)
+    {
+        VideoThreadParams *threadParams = (VideoThreadParams*)settings_.streamParams_.mediaThreads_[i];
+        ArcModule::ThreadEntry entry = {i, (double)threadParams->coderParams_.startBitrate_, 0.2};
+        arcThreadArray_.push_back(entry);
+    }
+     
+    arcModule_.reset(new ArcModule(NdnRtcUtils::getIoService()));
+    arcModule_->initialize(this, IRateAdaptationModule::CodecMode::CodecModeNormal, arcThreadArray_);
+}
 
+void
+VideoConsumer::onChallengePhaseStarted(unsigned int threadId,
+                                       double challengeLevel)
+{
+    
+}
+
+void
+VideoConsumer::onChallengePhaseStopped()
+{
+    
+}
+
+void
+VideoConsumer::onThreadChallenge(double challengeLevel)
+{
+    
+}
+
+void
+VideoConsumer::onThreadShouldSwitch(unsigned int threadId)
+{
+    
+}
+
+void
+VideoConsumer::onInterestIssued(const boost::shared_ptr<const ndn::Interest>& interest)
+{
+    int threadIdx = threadIdxMap_[NdnRtcNamespace::getThreadName(interest->getName())];
+    
+    arcModule_->interestExpressed(interest->getName().toUri(),threadIdx);
+}
+
+void
+VideoConsumer::onDataArrived(const boost::shared_ptr<ndn::Data>& data)
+{
+    std::string threadName = NdnRtcNamespace::getThreadName(data->getName());
+    arcModule_->dataReceived(data->getName().toUri(), getThreadIdx(threadName),
+                             data->getDefaultWireEncoding().size());
+}

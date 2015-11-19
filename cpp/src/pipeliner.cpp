@@ -8,6 +8,7 @@
 //  Author:  Peter Gusev
 //
 
+#include <boost/assign.hpp>
 #include "pipeliner.h"
 #include "ndnrtc-namespace.h"
 #include "rtt-estimation.h"
@@ -15,6 +16,7 @@
 #include "params.h"
 #include "consumer.h"
 #include "interest-queue.h"
+#include "arc-module.h"
 
 using namespace boost;
 using namespace webrtc;
@@ -59,7 +61,6 @@ deltaParitySegnumEstimatorId_(NdnRtcUtils::setupMeanEstimator(0, frameSegmentsIn
 keyParitySegnumEstimatorId_(NdnRtcUtils::setupMeanEstimator(0, frameSegmentsInfo.keyAvgParitySegNum_)),
 rtxFreqMeterId_(NdnRtcUtils::setupFrequencyMeter()),
 useKeyNamespace_(true),
-streamId_(0),
 frameBuffer_(consumer_->getFrameBuffer().get()),
 recoveryCheckpointTimestamp_(0),
 stabilityEstimator_(10, 4, 0.3, 0.7),
@@ -67,7 +68,9 @@ rttChangeEstimator_(7, 3, 0.12),
 dataMeterId_(NdnRtcUtils::setupDataRateMeter(5)),
 segmentFreqMeterId_(NdnRtcUtils::setupFrequencyMeter(10)),
 exclusionPacket_(0),
-waitForThreadTransition_(false)
+waitForThreadTransition_(false),
+waitNewThreadStarted_(false),
+waitOldThreadComplete_(false)
 {
     switchToState(StateInactive);
 }
@@ -106,6 +109,7 @@ Pipeliner2::start()
     failedWindow_ = DefaultMinWindow;
     switchToState(StateWaitInitial);
     askForRightmostData();
+    currentThreadName_ = consumer_->getCurrentThreadName();
     
     return RESULT_OK;
 }
@@ -134,6 +138,8 @@ ndnrtc::new_api::Pipeliner2::threadSwitched()
     {
         // schedule thread transition when key frame will arrive
         waitForThreadTransition_ = true;
+        oldThreadName_ = currentThreadName_;
+        currentThreadName_ = consumer_->getCurrentThreadName();
     }
     else // otherwise - rebuffer
     {
@@ -452,6 +458,12 @@ ndnrtc::new_api::Pipeliner2::resetData()
     rttChangeEstimator_.flush();
     stabilityEstimator_.flush();
     window_.reset();
+    
+    waitForThreadTransition_ = false;
+    waitNewThreadStarted_ = false;
+    waitOldThreadComplete_ = false;
+    currentThreadName_ = consumer_->getCurrentThreadName();
+    currentArcIndicators_ = ArcModule::ZeroIndicators;
 }
 
 //******************************************************************************
@@ -464,6 +476,9 @@ Pipeliner2::onData(const boost::shared_ptr<const Interest>& interest,
     << "data " << data->getName() << " "
     << data->getContent().size() << " bytes" << std::endl;
     
+    if (callback_)
+        callback_->onDataArrived(data);
+    
     NdnRtcUtils::dataRateMeterMoreData(dataMeterId_, data->getDefaultWireEncoding().size());
     NdnRtcUtils::frequencyMeterTick(segmentFreqMeterId_);
     recoveryCheckpointTimestamp_ = NdnRtcUtils::millisecondTimestamp();
@@ -475,6 +490,8 @@ Pipeliner2::onData(const boost::shared_ptr<const Interest>& interest,
     bool isKeyPrefix = NdnRtcNamespace::isPrefix(data->getName(), keyFramesPrefix_);
     PrefixMetaInfo metaInfo;
     PrefixMetaInfo::extractMetadata(data->getName(), metaInfo);
+    
+    checkThreadSwitchEvents(data);
     
     switch (state_) {
         case StateWaitInitial:
@@ -530,6 +547,8 @@ Pipeliner2::onData(const boost::shared_ptr<const Interest>& interest,
         }
             break;
     }
+    
+    updateArcIndicators();
 }
 
 void
@@ -1080,15 +1099,143 @@ Pipeliner2::performThreadTransition()
     window_.reset();
     
     keyFrameSeqNo_ = keySyncList_[consumer_->getCurrentThreadName()];
+    lastFrameOldThread_ = deltaFrameSeqNo_-1;
     // it's okay for delta key number to be +1'd
     deltaFrameSeqNo_ = deltaSyncList_[consumer_->getCurrentThreadName()]+1;
     
+    if (consumer_->getArcModule().get())
+        consumer_->getArcModule()->reportThreadEvent(ArcModule::ThreadEvent::InterestsSwitched);
+        
     requestNextKey(keyFrameSeqNo_);
     requestNextDelta(deltaFrameSeqNo_);
     
     waitForThreadTransition_ = false;
+    waitNewThreadStarted_ = true;
+    waitOldThreadComplete_ = true;
     
-    LogTraceC << "thread switched" << std::endl;
+    LogTraceC << "thread switched. last old thread frame is " << lastFrameOldThread_ << std::endl;
+}
+
+void
+Pipeliner2::switchToState(State newState)
+{
+    State oldState = state_;
+    state_ = newState;
+    
+    if (oldState != newState)
+    {
+        int64_t timestamp = NdnRtcUtils::millisecondTimestamp();
+        int64_t phaseDuration = timestamp - startPhaseTimestamp_;
+        startPhaseTimestamp_ = timestamp;
+        
+        ((oldState == StateChasing) ? LogInfoC : LogDebugC)
+        << "phase " << toString(oldState) << " finished in "
+        << phaseDuration << " msec" << std::endl;
+        
+        LogDebugC << "new state " << toString(state_) << std::endl;
+        
+        updateArcIndicators();
+        
+        if (callback_)
+            callback_->onStateChanged(oldState, state_);
+    }
+}
+
+void
+Pipeliner2::updateArcIndicators()
+{
+    static std::map<Pipeliner2::State, ArcModule::ConsumerPhase> stateToPhase =
+    boost::assign::map_list_of
+    (Pipeliner2::State::StateInactive, ArcModule::ConsumerPhase::ConsumerPhaseInactive)
+    (Pipeliner2::State::StateWaitInitial, ArcModule::ConsumerPhase::ConsumerPhaseWaitInitial)
+    (Pipeliner2::State::StateChasing, ArcModule::ConsumerPhase::ConsumerPhaseChasing)
+    (Pipeliner2::State::StateAdjust, ArcModule::ConsumerPhase::ConsumerPhaseAdjust)
+    (Pipeliner2::State::StateFetching, ArcModule::ConsumerPhase::ConsumerPhaseFetch)
+    (Pipeliner2::State::StateChallenging, ArcModule::ConsumerPhase::ConsumerPhaseChallenge);
+    unsigned int updateMask = 0;
+    
+    if ((*statStorage_)[Indicator::Darr] != currentArcIndicators_.Darr_)
+    {
+        updateMask |= (1<<0);
+        currentArcIndicators_.Darr_ = (*statStorage_)[Indicator::Darr];
+    }
+    
+    if ((*statStorage_)[Indicator::CurrentProducerFramerate] != currentArcIndicators_.producerRate_)
+    {
+        updateMask |= (1<<1);
+        currentArcIndicators_.producerRate_ = (*statStorage_)[Indicator::CurrentProducerFramerate];
+    }
+    
+    if ((*statStorage_)[Indicator::RttPrime] != currentArcIndicators_.rttPrime_)
+    {
+        updateMask |= (1<<2);
+        currentArcIndicators_.rttPrime_ = (*statStorage_)[Indicator::RttPrime];
+    }
+    
+    if ((*statStorage_)[Indicator::RttEstimation] != currentArcIndicators_.rttRealEstimated_)
+    {
+        updateMask |= (1<<3);
+        currentArcIndicators_.rttRealEstimated_ = (*statStorage_)[Indicator::RttEstimation];
+    }
+    
+    if ((*statStorage_)[Indicator::BufferTargetSize] != currentArcIndicators_.bufferTargetSize_)
+    {
+        updateMask |= (1<<4);
+        currentArcIndicators_.bufferTargetSize_ = (*statStorage_)[Indicator::BufferTargetSize];
+    }
+    
+    if ((*statStorage_)[Indicator::BufferPlayableSize] != currentArcIndicators_.bufferPlayableSize_)
+    {
+        updateMask |= (1<<5);
+        currentArcIndicators_.bufferPlayableSize_ = (*statStorage_)[Indicator::BufferPlayableSize];
+    }
+    
+    double bufferReservedSize = (*statStorage_)[Indicator::BufferEstimatedSize]-(*statStorage_)[Indicator::BufferPlayableSize];
+    
+    if (bufferReservedSize != currentArcIndicators_.bufferReservedSize_)
+    {
+        updateMask |= (1<<6);
+        currentArcIndicators_.bufferReservedSize_ = bufferReservedSize;
+    }
+    
+    if (stateToPhase[state_] != currentArcIndicators_.consumerPhase_)
+    {
+        updateMask |= (1<<7);
+        currentArcIndicators_.consumerPhase_ = stateToPhase[state_];
+    }
+    
+    if (updateMask)
+    {
+        currentArcIndicators_.updateMask_ = updateMask;
+        
+        if (consumer_->getArcModule().get())
+            consumer_->getArcModule()->updateIndicators(currentArcIndicators_);
+    }
+}
+
+void
+Pipeliner2::checkThreadSwitchEvents(const boost::shared_ptr<ndn::Data>& data)
+{
+    if (consumer_->getArcModule().get() &&
+        (waitNewThreadStarted_ || waitOldThreadComplete_))
+    {
+        std::string dataThreadName = NdnRtcNamespace::getThreadName(data->getName());
+        
+        if (waitNewThreadStarted_ && dataThreadName == currentThreadName_)
+        {
+            consumer_->getArcModule()->reportThreadEvent(ArcModule::ThreadEvent::NewThreadStarted);
+            waitNewThreadStarted_ = false;
+        }
+        
+        if (waitOldThreadComplete_ && dataThreadName == oldThreadName_)
+        {
+            if (lastFrameOldThread_ == NdnRtcNamespace::getPacketNumber(data->getName()))
+            {
+                consumer_->getArcModule()->reportThreadEvent(ArcModule::ThreadEvent::OldThreadComplete);
+                waitOldThreadComplete_ = false;
+            }
+        }
+    }
 }
 
 //******************************************************************************

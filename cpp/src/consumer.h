@@ -21,6 +21,7 @@
 
 namespace ndnrtc {
     class AudioVideoSynchronizer;
+    class IRateAdaptationModule;
     
     namespace new_api {
         namespace statistics
@@ -190,6 +191,10 @@ namespace ndnrtc {
             getAvSynchronizer() const
             { return avSync_; }
             
+            boost::shared_ptr<IRateAdaptationModule>
+            getArcModule() const
+            { return arcModule_; }
+            
             statistics::StatisticsStorage
             getStatistics() const;
             
@@ -198,15 +203,6 @@ namespace ndnrtc {
             
             virtual void
             setDescription(const std::string& desc);
-            
-            virtual void
-            onBufferingEnded();
-            
-            virtual void
-            onStateChanged(const int& oldState, const int& newState);
-            
-            virtual void
-            onInitialDataArrived();
             
             bool
             getIsConsuming() { return isConsuming_; }
@@ -218,6 +214,7 @@ namespace ndnrtc {
             ConsumerSettings settings_;
             std::string streamPrefix_;
             int currentThreadIdx_ = 0;
+            std::map<std::string, int> threadIdxMap_;
             
             boost::shared_ptr<statistics::StatisticsStorage> statStorage_;
             boost::shared_ptr<FrameBuffer> frameBuffer_;
@@ -229,11 +226,24 @@ namespace ndnrtc {
             boost::shared_ptr<BufferEstimator> bufferEstimator_;
             boost::shared_ptr<IRenderer> renderer_;
             boost::shared_ptr<AudioVideoSynchronizer> avSync_;
+            boost::shared_ptr<IRateAdaptationModule> arcModule_;
             
             boost::mutex observerMutex_;
             IConsumerObserver *observer_;
             
-        private:
+            // IPipelinerCallback
+            virtual void
+            onBufferingEnded();
+            
+            virtual void
+            onStateChanged(const int& oldState, const int& newState);
+            
+            virtual void
+            onInitialDataArrived();
+            
+            virtual void
+            onDataArrived(const boost::shared_ptr<ndn::Data>& data);
+            
             int
             getThreadIdx(const std::string& threadName);
         };

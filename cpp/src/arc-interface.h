@@ -37,7 +37,7 @@ namespace ndnrtc {
 	    };
      
      	typedef struct _ThreadEntry {
-        	unsigned int id_;
+        	int id_;
          	double bitrate_;
          	double parityRatio_;
      	} ThreadEntry;
@@ -61,8 +61,8 @@ namespace ndnrtc {
      		double rttRealEstimated_;	// bit 3 in updateMask
      		double bufferTargetSize_;	// bit 4 in updateMask
      		double bufferPlayableSize_;	// bit 5 in updateMask
-     		double bufferReservedSize_;
-     		ConsumerPhase consumerPhase_;
+     		double bufferReservedSize_; // bit 6 in updateMask
+     		ConsumerPhase consumerPhase_; // bit 7 in updateMask
      	} ArcIndicators;
      
      	enum class ThreadEvent {
@@ -78,7 +78,7 @@ namespace ndnrtc {
      	 * @param mediaThreads -Media threads available for consumer to fetch
      	 * @return 0 if initialization was successfull, non-zero otherwise
      	 */
-        virtual int initialize(const IRateAdaptationModuleCallback* callback,
+        virtual int initialize(IRateAdaptationModuleCallback* const callback,
         						const CodecMode& codecMode,
         						std::vector<ThreadEntry> mediaThreads) = 0;
         /**
@@ -129,14 +129,14 @@ namespace ndnrtc {
     class IRateAdaptationModuleCallback {
     	public:
     		/**
-    		 * Called by ARC module whenever it wants to initiate chllenge pahse
+    		 * Called by ARC module whenever it wants to initiate challenge phase
     		 * @param threadId -	ID of the thread (usually, with higher bitrate) to 
     		 *						start fetching from
     		 * @param challengeLevel - 	Percentage (in the interval [0,1]) of thread 
     		 *							data to fetch
     		 */
     		virtual void onChallengePhaseStarted(unsigned int threadId, 
-    											double challengeLevel) = 0;
+    											 double challengeLevel) = 0;
     		/**
     		 * Called by ARC module whenever it wants to stop Challenge phase
     		 */
@@ -156,11 +156,10 @@ namespace ndnrtc {
     		 * Called by ARC module when it decides that current network 
     		 * conditions are sufficient for fetching new thread (usually, 
     		 * with higher bandwidth)
-    		 * NOTE: ARC should initiate Challenge phase before calling this
-    		 * method
+             * @param threadId ID of the media thread wichi should be fetched
     		 * @see onChallengePhaseStarted
     		 */
-			virtual void onThreadShouldSwitch() = 0;
+			virtual void onThreadShouldSwitch(unsigned int threadId) = 0;
     };
 }
 
