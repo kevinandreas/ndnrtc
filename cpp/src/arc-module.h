@@ -74,7 +74,8 @@ namespace ndnrtc {
                                unsigned int threadId);
         void interestRetransmit(const std::string &name,
                                 unsigned int threadId);
-        void dataReceived(const std::string &name,
+        void dataReceived(const std::string &interestName,
+			  const std::string &dataName,
                           unsigned int threadId,
                           unsigned int ndnPacketSize);
         void updateIndicators(const ArcIndicators& indicators);

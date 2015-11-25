@@ -95,19 +95,20 @@ void ArcModule::interestRetransmit(const std::string &name,
     return;
 }
 
-void ArcModule::dataReceived(const std::string &name,
+void ArcModule::dataReceived(const std::string &interestName,
+			     const std::string &dataName,
                              unsigned int threadId,
                              unsigned int ndnPacketSize)
 {
 #ifdef ARC_DEBUG
-    std::cout << "ArcModule dataReceived() thread_id[" << threadId << "] name[" << name << "] size[" << ndnPacketSize << "]" << std::endl;
+    std::cout << "ArcModule dataReceived() thread_id[" << threadId << "] name[" << interestName << "] size[" << ndnPacketSize << "]" << std::endl;
 #endif //ARC_DEBUG
     if (!(consumerPhase_ == ConsumerPhaseFetch || consumerPhase_ == ConsumerPhaseChallenge)) return;
     
     if (threadId == currThreadId_ && currThHist_ != NULL) {
-        currThHist_->dataReceived(name, threadId, ndnPacketSize);
+        currThHist_->dataReceived(interestName, threadId, ndnPacketSize);
     } else if (threadId == nextThreadId_ && nextThHist_ != NULL) {
-        nextThHist_->dataReceived(name, threadId, ndnPacketSize);
+        nextThHist_->dataReceived(interestName, threadId, ndnPacketSize);
     }
     return;
 }
