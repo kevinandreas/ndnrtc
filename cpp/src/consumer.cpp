@@ -327,7 +327,8 @@ Consumer::onInitialDataArrived()
 }
 
 void
-Consumer::onDataArrived(const boost::shared_ptr<ndn::Data>& data)
+Consumer::onDataArrived(const boost::shared_ptr<const Interest>& interest,
+                        const boost::shared_ptr<ndn::Data>& data)
 {
 }
 

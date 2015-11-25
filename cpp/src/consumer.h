@@ -242,7 +242,8 @@ namespace ndnrtc {
             onInitialDataArrived();
             
             virtual void
-            onDataArrived(const boost::shared_ptr<ndn::Data>& data);
+            onDataArrived(const boost::shared_ptr<const Interest>& interest,
+                          const boost::shared_ptr<ndn::Data>& data);
             
             int
             getThreadIdx(const std::string& threadName);

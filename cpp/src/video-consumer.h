@@ -98,7 +98,8 @@ namespace ndnrtc {
             
             // IPipelinerCallback
             void
-            onDataArrived(const boost::shared_ptr<ndn::Data>& data);
+            onDataArrived(const boost::shared_ptr<const Interest>& interest,
+                          const boost::shared_ptr<ndn::Data>& data);
         };
     }
 }

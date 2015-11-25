@@ -524,7 +524,7 @@ Pipeliner2::onData(const boost::shared_ptr<const Interest>& interest,
     << data->getContent().size() << " bytes" << std::endl;
     
     if (callback_)
-        callback_->onDataArrived(data);
+        callback_->onDataArrived(interest, data);
     
     NdnRtcUtils::dataRateMeterMoreData(dataMeterId_, data->getDefaultWireEncoding().size());
     NdnRtcUtils::frequencyMeterTick(segmentFreqMeterId_);
@@ -1303,9 +1303,10 @@ Pipeliner2::checkThreadSwitchEvents(const boost::shared_ptr<ndn::Data>& data)
 }
 
 void
-Pipeliner2::onChallengeDataArrived(const boost::shared_ptr<Data>& data)
+Pipeliner2::onChallengeDataArrived(const boost::shared_ptr<const Interest>& interest,
+                                   const boost::shared_ptr<Data>& data)
 {
-    callback_->onDataArrived(data);
+    callback_->onDataArrived(interest, data);
 }
 
 boost::shared_ptr<InterestQueue>
@@ -1500,7 +1501,7 @@ ChallengePipeliner::onData(const boost::shared_ptr<const Interest>& interest,
 
     NdnRtcUtils::meanEstimatorNewValue((isKey)?kEst_:dEst_, metaInfo.totalSegmentsNum_);
     NdnRtcUtils::meanEstimatorNewValue((isKey)?kpEst_:dpEst_, metaInfo.paritySegmentsNum_);
-    callback_->onChallengeDataArrived(data);
+    callback_->onChallengeDataArrived(interest, data);
 }
 
 void

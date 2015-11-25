@@ -223,9 +223,11 @@ VideoConsumer::onInterestIssued(const boost::shared_ptr<const ndn::Interest>& in
 }
 
 void
-VideoConsumer::onDataArrived(const boost::shared_ptr<ndn::Data>& data)
+VideoConsumer::onDataArrived(const boost::shared_ptr<const Interest>& interest,
+                             const boost::shared_ptr<ndn::Data>& data)
 {
     std::string threadName = NdnRtcNamespace::getThreadName(data->getName());
-    arcModule_->dataReceived(data->getName().toUri(), getThreadIdx(threadName),
+    arcModule_->dataReceived(interest->getName().toUri(),
+                             data->getName().toUri(), getThreadIdx(threadName),
                              data->getDefaultWireEncoding().size());
 }

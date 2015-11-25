@@ -39,14 +39,16 @@ namespace ndnrtc {
             onStateChanged(const int& oldState, const int& newState) = 0;
             
             virtual void
-            onDataArrived(const boost::shared_ptr<ndn::Data>& data) = 0;
+            onDataArrived(const boost::shared_ptr<const Interest>& interest,
+                          const boost::shared_ptr<ndn::Data>& data) = 0;
         };
         
         class IChallengePipelinerCallback
         {
         public:
             virtual void
-            onChallengeDataArrived(const boost::shared_ptr<ndn::Data>& data) = 0;
+            onChallengeDataArrived(const boost::shared_ptr<const Interest>& interest,
+                                   const boost::shared_ptr<ndn::Data>& data) = 0;
             
             virtual boost::shared_ptr<InterestQueue>
             getInterestQueue() = 0;
@@ -341,7 +343,8 @@ namespace ndnrtc {
             
             // IChallengePipelinerCallback
             void
-            onChallengeDataArrived(const boost::shared_ptr<Data>& data);
+            onChallengeDataArrived(const boost::shared_ptr<const Interest>& interest,
+                                   const boost::shared_ptr<Data>& data);
             
             boost::shared_ptr<InterestQueue>
             getInterestQueue();
