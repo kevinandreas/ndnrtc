@@ -594,3 +594,19 @@ long ArcHistry::diffArcTval(const ArcTval* now_t, const ArcTval* prev_t){
     diff_msec=now_t->msec-prev_t->msec;
     return diff_sec*1000+diff_msec;
 }
+
+
+uint32_t ArcHistry::diffSeq (uint32_t a, uint32_t b)
+{
+  uint32_t diff;
+  if (a >= b) {
+    diff = a - b;
+  }
+  else {
+    if ((b - a) > (std::numeric_limits<uint32_t>::max () / 2))
+      diff = a + (std::numeric_limits<uint32_t>::max () - b);
+    else
+      diff = a - b;
+  }
+  return diff;
+}
