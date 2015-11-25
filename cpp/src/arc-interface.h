@@ -104,7 +104,8 @@ namespace ndnrtc {
          * @param ndnPacketSize - 	Full size (including NDN packet overhead) of 
          *							Data segment packet (in  bytes)
          */
-        virtual void dataReceived(const std::string &name,
+        virtual void dataReceived(const std::string &interestName,
+                                  const std::string &dataName,
                                   unsigned int threadId,
                                   unsigned int ndnPacketSize) = 0;
 

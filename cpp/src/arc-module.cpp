@@ -69,7 +69,7 @@ void ArcModule::interestExpressed(const std::string &name,
 #endif //ARC_DEBUG
     if (consumerPhase_ == ConsumerPhaseAdjust)
         currThreadId_ = threadId;
-    if (consumerPhase_ != ConsumerPhaseFetch || consumerPhase_ != ConsumerPhaseChallenge) return;
+    if (!(consumerPhase_ == ConsumerPhaseFetch || consumerPhase_ == ConsumerPhaseChallenge)) return;
     
     if (threadId == currThreadId_ && currThHist_ != NULL) {
         currThHist_->interestExpressed(name, threadId);
@@ -85,7 +85,7 @@ void ArcModule::interestRetransmit(const std::string &name,
 #ifdef ARC_DEBUG
     std::cout << "ArcModule interestRetransmit() thread_id[" << threadId << "] name[" << name << "]" << std::endl;
 #endif //ARC_DEBUG
-    if (consumerPhase_ != ConsumerPhaseFetch || consumerPhase_ != ConsumerPhaseChallenge) return;
+    if (!(consumerPhase_ == ConsumerPhaseFetch || consumerPhase_ == ConsumerPhaseChallenge)) return;
     
     if (threadId == currThreadId_ && currThHist_ != NULL) {
         currThHist_->interestRetransmit(name, threadId);
@@ -102,7 +102,7 @@ void ArcModule::dataReceived(const std::string &name,
 #ifdef ARC_DEBUG
     std::cout << "ArcModule dataReceived() thread_id[" << threadId << "] name[" << name << "] size[" << ndnPacketSize << "]" << std::endl;
 #endif //ARC_DEBUG
-    if (consumerPhase_ != ConsumerPhaseFetch || consumerPhase_ != ConsumerPhaseChallenge) return;
+    if (!(consumerPhase_ == ConsumerPhaseFetch || consumerPhase_ == ConsumerPhaseChallenge)) return;
     
     if (threadId == currThreadId_ && currThHist_ != NULL) {
         currThHist_->dataReceived(name, threadId, ndnPacketSize);
