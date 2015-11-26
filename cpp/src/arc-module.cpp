@@ -61,7 +61,7 @@ int ArcModule::initialize(IRateAdaptationModuleCallback* const callback,
 
 void ArcModule::interestExpressed(const std::string &name,
                                   unsigned int threadId,
-				  uint32_t interestNoce)
+				  uint32_t interestNonce)
 {
 #ifdef ARC_DEBUG
     std::cout << "ArcModule interestExpressed() thread_id[" << threadId << "] name[" << name << "]" << std::endl;
@@ -453,7 +453,7 @@ void ArcHistry::dataReceived(const std::string &name,
                              uint32_t dataNonce,
                              uint32_t dGen)
 {
-    ArcTval tv;
+    ArcTval tv, tv2;
     uint32_t seq, diff_seq;
     double cur_rtt;
 
@@ -470,19 +470,20 @@ void ArcHistry::dataReceived(const std::string &name,
     diff_seq = diffSeq (seq, lastRcvSeq_);
     if (diff_seq > 0)
         lastRcvSeq_ = seq;
-        
-    if (entry->GetNonce == dataNonce)
-        cur_rtt = diffArcTval(tv, entry->getTxTime ()) - dGen;
+    
+    tv2 = entry->GetTxTime ();
+    if (entry->GetNonce() == dataNonce)
+        cur_rtt = diffArcTval(&tv, &tv2) - dGen;
     else
-        cur_rtt = diffArcTval(tv, entry->getTxTime ());
+        cur_rtt = diffArcTval(&tv, &tv2);
 
     // update entry of Interest history
     InterestHistry ih = *entry;
     ++ih.rx_count;
     if (ih.rx_count == 1) {
         ih.rx_time = tv;
-        ih.rtt_prime = diffArcTval(tv, entry->getTxTime ());
-	ih.rtt_estimate = diffArcTval(tv, entry->getTxTime ()) - dGen;
+        ih.rtt_prime = diffArcTval(&tv, &tv2);
+	ih.rtt_estimate = diffArcTval(&tv, &tv2) - dGen;
 	if (ih.nonce == dataNonce)
 	  ih.is_original = true;
 	else

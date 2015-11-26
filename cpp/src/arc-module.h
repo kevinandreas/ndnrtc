@@ -128,10 +128,10 @@ namespace ndnrtc {
         ArcHistry ();
         ~ArcHistry ();
         void interestExpressed(const std::string &name,
-                               unsigned int threadId);
+                               unsigned int threadId,
+			       uint32_t interestNonce);
         void interestRetransmit(const std::string &name,
-                                unsigned int threadId,
-				uint32_t interestNonce);
+                                unsigned int threadId);
         void dataReceived(const std::string &name,
                           unsigned int threadId,
                           unsigned int ndnPacketSize,
