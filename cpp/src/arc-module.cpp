@@ -51,9 +51,9 @@ int ArcModule::initialize(IRateAdaptationModuleCallback* const callback,
     
     for (auto itr = mediaThreads.begin(); itr != mediaThreads.end(); ++itr) {
         ThreadTable[numThread_] = *itr;
-#ifdef ARC_DEBUG
-        std::cout << "ArcModule initialize() thread_id[" << ThreadTable[numThread_].id_ << "] bitrate[" <<  ThreadTable[numThread_].bitrate_ << "] parity[" << ThreadTable[numThread_].parityRatio_ << "]" << std::endl;
-#endif //ARC_DEBUG
+#ifdef ARC_DEBUG_INITIALIZE
+        std::cout << "ArcModule initializing thread_id[" << ThreadTable[numThread_].id_ << "] bitrate[" <<  ThreadTable[numThread_].bitrate_ << "kbps] parity[" << ThreadTable[numThread_].parityRatio_ << "]" << std::endl;
+#endif //ARC_DEBUG_INITIALIZE
         ++numThread_;
     }
     return 0;
@@ -63,9 +63,9 @@ void ArcModule::interestExpressed(const std::string &name,
                                   unsigned int threadId,
 				  uint32_t interestNonce)
 {
-#ifdef ARC_DEBUG
-    std::cout << "ArcModule interestExpressed() thread_id[" << threadId << "] name[" << name << "]" << std::endl;
-#endif //ARC_DEBUG
+#ifdef ARC_DEBUG_SNDINTEREST
+    std::cout << "ArcModule interestExpressed thread_id[" << threadId << "] name[" << name << "]" << std::endl;
+#endif //ARC_DEBUG_SNDINTEREST
     if (consumerPhase_ == ConsumerPhaseAdjust)
         currThreadId_ = threadId;
     if (!(consumerPhase_ == ConsumerPhaseFetch || consumerPhase_ == ConsumerPhaseChallenge)) return;
@@ -81,9 +81,9 @@ void ArcModule::interestExpressed(const std::string &name,
 void ArcModule::interestRetransmit(const std::string &name,
                                    unsigned int threadId)
 {
-#ifdef ARC_DEBUG
-    std::cout << "ArcModule interestRetransmit() thread_id[" << threadId << "] name[" << name << "]" << std::endl;
-#endif //ARC_DEBUG
+#ifdef ARC_DEBUG_SNDINTEREST
+    std::cout << "ArcModule interestRetransmit thread_id[" << threadId << "] name[" << name << "]" << std::endl;
+#endif //ARC_DEBUG_SNDINTEREST
     if (!(consumerPhase_ == ConsumerPhaseFetch || consumerPhase_ == ConsumerPhaseChallenge)) return;
     
     if (threadId == currThreadId_ && currThHist_ != NULL) {
@@ -109,9 +109,9 @@ void ArcModule::dataReceivedX(const std::string &interestName,
                               int32_t dataNonce,
                               int32_t dGen)
 {
-#ifdef ARC_DEBUG
-    std::cout << "ArcModule dataReceived() thread_id[" << threadId << "] name[" << interestName << "] size[" << ndnPacketSize << "]" << std::endl;
-#endif //ARC_DEBUG
+#ifdef ARC_DEBUG_RCVDATA
+    std::cout << "ArcModule dataReceived thread_id[" << threadId << "] name[" << interestName << "] size[" << ndnPacketSize << "]" << std::endl;
+#endif //ARC_DEBUG_RCVDATA
     if (!(consumerPhase_ == ConsumerPhaseFetch || consumerPhase_ == ConsumerPhaseChallenge)) return;
     
     if (threadId == currThreadId_ && currThHist_ != NULL) {
@@ -126,10 +126,9 @@ void ArcModule::updateIndicators(const ArcModule::ArcIndicators& indicators)
 {
     if (consumerPhase_ == ConsumerPhaseAdjust) {
         if (indicators.consumerPhase_ == ConsumerPhaseFetch) {
-            std::cout << "ArcModule updateIndicators() NDNRTC state:Adjust->Fetch state_check:" << arcStateCheck_ << std::endl;
-#ifdef ARC_DEBUG
-            std::cout << "ArcModule updateIndicators() NDNRTC state:Adjust->Fetch state_check:" << arcStateCheck_ << std::endl;
-#endif //ARC_DEBUG
+#ifdef ARC_DEBUG_STATE
+            std::cout << "ArcModule updateIndicators NDNRTC_state:Adjust->Fetch state_check:" << arcStateCheck_ << std::endl;
+#endif //ARC_DEBUG_STATE
             currThHist_ = new ArcHistry;
             arcState_ = arcStateNormal;
 	    countChallengePhase_ = 0;
@@ -137,10 +136,9 @@ void ArcModule::updateIndicators(const ArcModule::ArcIndicators& indicators)
         
     } else if (consumerPhase_ == ConsumerPhaseFetch) {
         if (indicators.consumerPhase_ == ConsumerPhaseAdjust) {
-            std::cout << "ArcModule updateIndicators() NDNRTC state:Fetch->Adjust state_check:" << arcStateCheck_ << std::endl;
-#ifdef ARC_DEBUG
-            std::cout << "ArcModule updateIndicators() NDNRTC state:Fetch->Adjust state_check:" << arcStateCheck_ << std::endl;
-#endif //ARC_DEBUG
+#ifdef ARC_DEBUG_STATE
+            std::cout << "ArcModule updateIndicators NDNRTC_state:Fetch->Adjust state_check:" << arcStateCheck_ << std::endl;
+#endif //ARC_DEBUG_STATE
             delete currThHist_;
             currThHist_ = NULL;
             arcState_ = arcStateNormal;
@@ -148,10 +146,9 @@ void ArcModule::updateIndicators(const ArcModule::ArcIndicators& indicators)
         if (indicators.consumerPhase_ == ConsumerPhaseChallenge) {
             if (arcState_ != onChallengeStarted)
                 arcStateCheck_ = false;
-            std::cout << "ArcModule updateIndicators() NDNRTC state:Fetch->Challenge state_check:" << arcStateCheck_ << std::endl;
-#ifdef ARC_DEBUG
-            std::cout << "ArcModule updateIndicators() NDNRTC state:Fetch->Challenge state_check:" << arcStateCheck_ << std::endl;
-#endif //ARC_DEBUG
+#ifdef ARC_DEBUG_STATE
+            std::cout << "ArcModule updateIndicators NDNRTC_state:Fetch->Challenge state_check:" << arcStateCheck_ << std::endl;
+#endif //ARC_DEBUG_STATE
             nextThHist_ = new ArcHistry;
             arcState_ = arcStateNormal;
         }
@@ -160,10 +157,9 @@ void ArcModule::updateIndicators(const ArcModule::ArcIndicators& indicators)
         if (indicators.consumerPhase_ == ConsumerPhaseFetch) {
             if (arcState_ != onChallengeStopped)
                 arcStateCheck_ = false;
-            std::cout << "ArcModule updateIndicators() NDNRTC state:Challenge->Fetch state_check:" << arcStateCheck_ << std::endl;
-#ifdef ARC_DEBUG
-            std::cout << "ArcModule updateIndicators() NDNRTC state:Challenge->Fetch state_check:" << arcStateCheck_ << std::endl;
-#endif //ARC_DEBUG
+#ifdef ARC_DEBUG_STATE
+            std::cout << "ArcModule updateIndicators NDNRTC_state:Challenge->Fetch state_check:" << arcStateCheck_ << std::endl;
+#endif //ARC_DEBUG_STATE
             delete currThHist_;
             currThHist_ = new ArcHistry;
             nextThHist_ = new ArcHistry;
@@ -178,12 +174,12 @@ void ArcModule::updateIndicators(const ArcModule::ArcIndicators& indicators)
 
 void ArcModule::reportThreadEvent(const ArcModule::ThreadEvent& event)
 {
-#ifdef ARC_DEBUG
-    std::cout << "ArcModule reportThreadEvent() state_check:" << arcStateCheck_ << std::endl;
-#endif //ARC_DEBUG
     if (event ==  ArcModule::ThreadEvent::OldThreadComplete) {
         if (arcState_ != onThreadSwitch)
             arcStateCheck_ = false;
+#ifdef ARC_DEBUG_STATE
+	std::cout << "ArcModule catches reportThreadEvent:OldThreadComplete state_check:" << arcStateCheck_ << std::endl;
+#endif //ARC_DEBUG_STATE
         if (consumerPhase_ == ConsumerPhaseChallenge) {
             arcState_ = onChallengeStopped;
             callback_->onChallengePhaseStopped();
@@ -200,75 +196,87 @@ void ArcModule::autoRateControl()
     ArcTval tv;
     
     getNowTval(&tv);
-#ifdef ARC_DEBUG
-    std::cout << "ArcModule autoRateControl() interval:" << diffArcTval(&tv, &arcCallTval_) << "[ms]" << std::endl;
-#endif //ARC_DEBUG
+#ifdef ARC_DEBUG_TIMER
+    std::cout << "ArcModule autoRateControl call interval:" << diffArcTval(&tv, &arcCallTval_) << "[ms]" << std::endl;
+#endif //ARC_DEBUG_TIMER
     arcCallTval_ = tv;
     
     if (arcState_ == arcStateNormal &&
         (consumerPhase_ == ConsumerPhaseFetch || consumerPhase_ == ConsumerPhaseChallenge)) {
-        
+
+        /* Adaptive Rate Control for Challenge Phase */
         if (consumerPhase_ == ConsumerPhaseChallenge
             && currThHist_ != NULL && nextThHist_ != NULL) {
             result_curr = currThHist_->nwEstimate();
             result_next = nextThHist_->nwEstimate();
 
+#ifdef ARC_DEBUG_ESTIMATE
+	    std::cout << "ArcModule autoRateControl on Challenge Phase thread_id[curr:" << currThreadId_ << " next:" << nextThreadId_ << "] curr_result[" << result_curr << "] next_result [" << result_next << "]" << std::endl;
+#endif //ARC_DEBUG_ESTIMATE
+
             if (result_curr == EstNormal && result_next == EstNormal) {
                 nextInterestPps_ += (20 / sqrt (nextInterestPps_));
             } else if (result_curr == EstCongested && result_next == EstCongested) {
                 nextInterestPps_ -= (0.5 * sqrt (nextInterestPps_));
-            } else if (result_curr == EstNormal && result_next == EstCongested) {
+            } else if ((result_curr == EstNormal || result_curr == EstUnclear) && result_next == EstCongested) {
                 nextInterestPps_ -= (0.5 * sqrt (nextInterestPps_));
-            } else if (result_curr == EstCongested && result_next == EstNormal) {
+            } else if (result_curr == EstCongested && (result_next == EstNormal || result_next == EstUnclear)) {
+	        /* there is another option that call onThreadShouldSwitch([lower thread id]) immediately */
                 nextInterestPps_ -= (0.5 * sqrt (nextInterestPps_));
-                // there is another option that call onThreadShouldSwitch([lower thread id]) immediately
             } else if (result_curr == EstCollapse || result_next == EstCollapse) {
 	      if (isLowerThread(currThreadId_)) {
 		/* switch thread of lower bitrate and waiting reportThreadEvent() */
 		callback_->onThreadChallenge(0);
 		currThreadId_ = getLowerThread(currThreadId_);
 		arcState_ = onThreadSwitch;
-#ifdef ARC_DEBUG
-		std::cout << "ArcModule autoRateControl() call onThreadShouldSwitch() thread_id[" << currThreadId_ << "]" << std::endl;
-#endif //ARC_DEBUG
+#ifdef ARC_DEBUG_THREAD
+		std::cout << "ArcModule calls onThreadShouldSwitch thread_id[" << currThreadId_ << "] for detecting congestion collapse" << std::endl;
+#endif //ARC_DEBUG_THREAD
 		callback_->onThreadShouldSwitch(currThreadId_);
 	      }
             } else {
                 // no process
             }
 
-	    //std::cout << << std::endl;
+#ifdef ARC_DEBUG_ESTIMATE
+	    std::cout << "ArcModule autoRateControl on Challenge Phase extra_pps[" << nextInterestPps_ << "] extra_bitrate[" << convertPpsToKBps(nextInterestPps_) << "kbp] thread_bitrate[curr:" << getBitRateThread(currThreadId_) << " next:" << getBitRateThread(nextThreadId_) << "]" << std::endl;
+#endif //ARC_DEBUG_ESTIMATE
 
-            if (nextInterestPps_ > 0) {
-                if (convertPpsToKBps(nextInterestPps_)
+            if ( convertPpsToKBps(nextInterestPps_) >= (STOP_CHALLENGE_RATIO * getBitRateThread(nextThreadId_))) {
+	        if (convertPpsToKBps(nextInterestPps_)
                     >= getBitRateThread(nextThreadId_) - getBitRateThread(currThreadId_)) {
                     /* switch thread of higher bitrate and waiting reportThreadEvent() */
                     arcState_ = onThreadSwitch;
                     currThreadId_ = nextThreadId_;
-#ifdef ARC_DEBUG
-                    std::cout << "ArcModule autoRateControl() call onThreadShouldSwitch() thread_id[" << currThreadId_ << "]" << std::endl;
-#endif //ARC_DEBUG
+#ifdef ARC_DEBUG_THREAD
+                    std::cout << "ArcModule calls onThreadShouldSwitch() thread_id[" << currThreadId_ << "] for switching higher thread" << std::endl;
+#endif //ARC_DEBUG_THREAD
                     callback_->onThreadShouldSwitch(currThreadId_);
                 } else {
                     delta_rate = convertPpsToKBps(nextInterestPps_) / getBitRateThread(nextThreadId_);
-#ifdef ARC_DEBUG
-                    std::cout << "ArcModule autoRateControl() call onThreadChallenge() delta[" << delta_rate << "]" << std::endl;
-#endif //ARC_DEBUG
+#ifdef ARC_DEBUG_THREAD
+                    std::cout << "ArcModule calls onThreadChallenge delta[" << delta_rate << "]" << std::endl;
+#endif //ARC_DEBUG_THREAD
                     callback_->onThreadChallenge(delta_rate);
                 }
             } else if (nextInterestPps_ <= 0) {
                 /* switch thread of lower bitrate and waiting reportThreadEvent() */
-                //callback_->onThreadChallenge(0);
+                callback_->onThreadChallenge(0);
                 currThreadId_ = getLowerThread(currThreadId_);
                 arcState_ = onThreadSwitch;
-#ifdef ARC_DEBUG
-                std::cout << "ArcModule autoRateControl() call onThreadShouldSwitch() thread_id[" << currThreadId_ << "]" << std::endl;
-#endif //ARC_DEBUG
+#ifdef ARC_DEBUG_THREAD
+                std::cout << "ArcModule calls onThreadShouldSwitch thread_id[" << currThreadId_ << "] for switching lower thread" << std::endl;
+#endif //ARC_DEBUG_THREAD
                 callback_->onThreadShouldSwitch(currThreadId_);
             }
-            
+
+
+	
         } else if (consumerPhase_ == ConsumerPhaseFetch && currThHist_ != NULL) {
             result_curr = currThHist_->nwEstimate();
+#ifdef ARC_DEBUG_ESTIMATE
+	    std::cout << "ArcModule autoRateControl on Fetching Phase thread_id[" << currThreadId_ << "] result[" << result_curr << "]" << std::endl;
+#endif //ARC_DEBUG_ESTIMATE
             if (result_curr == EstNormal) {
                 ++countChallengePhase_;
                 if (countChallengePhase_ >= COUNT_SW_HIGH) {
@@ -278,9 +286,9 @@ void ArcModule::autoRateControl()
                         delta_rate = FIRST_CHALLENGE_RATIO * getBitRateThread(nextThreadId_);
                         nextInterestPps_ = FIRST_CHALLENGE_RATIO * convertKBpsToPps(delta_rate);
                         arcState_ = onChallengeStarted;
-#ifdef ARC_DEBUG
-                        std::cout << "ArcModule autoRateControl() call onChallengePhaseStarted() thread_id[" << nextThreadId_ << "]" << std::endl;
-#endif //ARC_DEBUG
+#ifdef ARC_DEBUG_THREAD
+                        std::cout << "ArcModule calls onChallengePhaseStarted thread_id[" << nextThreadId_ << "]" << std::endl;
+#endif //ARC_DEBUG_THREAD
                         callback_->onChallengePhaseStarted(nextThreadId_, FIRST_CHALLENGE_RATIO);
                     }
                 }
@@ -291,9 +299,9 @@ void ArcModule::autoRateControl()
                         /* switch thread of lower bitrate and waiting reportThreadEvent() */
                         currThreadId_ = getLowerThread(currThreadId_);
                         arcState_ = onThreadSwitch;
-#ifdef ARC_DEBUG
-                        std::cout << "ArcModule autoRateControl() call onThreadShouldSwitch() thread_id[" << currThreadId_ << "]" << std::endl;
-#endif //ARC_DEBUG
+#ifdef ARC_DEBUG_THREAD
+                        std::cout << "ArcModule calls onThreadShouldSwitch thread_id[" << currThreadId_ << "] for switching lower thread" << std::endl;
+#endif //ARC_DEBUG_THREAD
                         callback_->onThreadShouldSwitch(currThreadId_);
                     }
                 }
@@ -302,10 +310,9 @@ void ArcModule::autoRateControl()
 		  /* switch thread of lower bitrate and waiting reportThreadEvent() */
 		  currThreadId_ = getLowerThread(currThreadId_);
 		  arcState_ = onThreadSwitch;
-#ifdef ARC_DEBUG
-		  std::cout << "ArcModule autoRateControl() call onThreadShouldSwitch() thread_id[" << c\
-		    urrThreadId_ << "]" << std::endl;
-#endif //ARC_DEBUG                                                                                             
+#ifdef ARC_DEBUG_THREAD
+		  std::cout << "ArcModule calls onThreadShouldSwitch thread_id[" << currThreadId_ << "] for detecting congestion cllapse" << std::endl;
+#endif //ARC_DEBUG_THREAD
 		  callback_->onThreadShouldSwitch(currThreadId_);
 		}
 	    }
@@ -327,11 +334,6 @@ void ArcModule::getNowTval(ArcTval *qt)
     tmp=localtime(&tv.tv_sec);
     qt->tim=mktime(tmp);
     qt->msec=tv.tv_usec/1000;
-    //printf("%04d/%02d/%02d %02d:%02d:%02d:%3d\n",
-    //      tmp->tm_year + 1900, tmp->tm_mon + 1,
-    //      tmp->tm_mday, tmp->tm_hour,
-    //      tmp->tm_min, tmp->tm_sec,
-    //      tv.tv_usec/1000);
     return;
 }
 
@@ -492,7 +494,7 @@ void ArcHistry::dataReceived(const std::string &name,
 {
     ArcTval tv, tv2;
     uint32_t seq, diff_seq;
-    double cur_rtt;
+    double cur_rtt = 0;
 
     getNowTval(&tv);
     
@@ -504,16 +506,12 @@ void ArcHistry::dataReceived(const std::string &name,
     name_map::iterator entry = nmap.find(name);
     if (entry == nmap.end ()) return;
     seq = entry->GetSeq ();
+    tv2 = entry->GetTxTime ();
+
     diff_seq = diffSeq (seq, lastRcvSeq_);
     if (diff_seq > 0)
         lastRcvSeq_ = seq;
     
-    tv2 = entry->GetTxTime ();
-    if (entry->GetNonce() == dataNonce)
-        cur_rtt = diffArcTval(&tv, &tv2) - dGen;
-    else
-        cur_rtt = diffArcTval(&tv, &tv2);
-
     // update entry of Interest history
     InterestHistry ih = *entry;
     ++ih.rx_count;
@@ -521,11 +519,17 @@ void ArcHistry::dataReceived(const std::string &name,
         ih.rx_time = tv;
         ih.rtt_prime = diffArcTval(&tv, &tv2);
 	ih.rtt_estimate = diffArcTval(&tv, &tv2) - dGen;
-	if (ih.nonce == dataNonce)
+	if (ih.nonce == dataNonce) {
 	  ih.is_original = true;
-	else
+	  cur_rtt = ih.rtt_estimate;
+	} else {
 	  ih.is_original = false;
+	  cur_rtt = ih.rtt_prime;
+	}
     }
+#ifdef ARC_DEBUG_RCVDATA_DETAIL
+    std::cout << "ArcModule dataRecived thread_id[" << ih.GetTid () << "] rtt_est[" << ih.GetRttEstimate () << "] rtt_prime[" << ih.GetRttPrime () << "] isOriginal[" << ih.IsOriginal () << "] count[" << ih.GetRxCount () << "]" << std::endl;
+#endif //ARC_DEBUG_RCVDATA_DETAIL
     nmap.replace(entry, ih);
 
     // update minimum rtt
@@ -558,6 +562,7 @@ enum EstResult ArcHistry::nwEstimate()
     double sum_rtt = 0;
     double avg_rtt = 0;
     double prev_avg_rtt;
+    unsigned int tid;
     
     if (diffSeq(lastRcvSeq_, lastEstSeq_) <= 0) return EstUnclear;
     
@@ -566,6 +571,7 @@ enum EstResult ArcHistry::nwEstimate()
     for(uint32_t i = start_seq; i <= lastRcvSeq_; ++i) {
         seq_map::iterator tmp_entry = smap.find(i);
         if (tmp_entry != smap.end ()) {
+	    tid = tmp_entry->GetTid ();
             if (!tmp_entry->IsRetx ()) {
 	        if (tmp_entry->IsOriginal ()) {
 		  sum_rtt += tmp_entry->GetRttEstimate ();
@@ -586,12 +592,14 @@ enum EstResult ArcHistry::nwEstimate()
     if (rx_count > 0) {
         avg_rtt = sum_rtt / rx_count;
 
-	//std::cout << "avg_rtt " << avg_rtt << " min_rtt " << minRtt_ << std::endl;
-
         if (prevAvgRtt_ == 0)
             prevAvgRtt_ = avg_rtt;
 	prev_avg_rtt = prevAvgRtt_;
 	prevAvgRtt_ = avg_rtt;
+
+#ifdef ARC_DEBUG_ESTIMATE
+	std::cout << "ArcModule nwEstimate thread_id[" << tid << "] avg_rtt[" << avg_rtt << "] prev_rtt [" << prevAvgRtt_ << "] min_rtt[" << minRtt_ << "num_of_data[" << rx_count << "]" << std::endl;
+#endif //ARC_DEBUG_ESTIMATE
 
 	if (avg_rtt > (minRtt_ + offsetCollapse_))
 	    return EstCollapse;
@@ -628,11 +636,6 @@ void ArcHistry::getNowTval(ArcTval *qt)
     tmp=localtime(&tv.tv_sec);
     qt->tim=mktime(tmp);
     qt->msec=tv.tv_usec/1000;
-    //printf("%04d/%02d/%02d %02d:%02d:%02d:%3d\n",
-    //      tmp->tm_year + 1900, tmp->tm_mon + 1,
-    //      tmp->tm_mday, tmp->tm_hour,
-    //      tmp->tm_min, tmp->tm_sec,
-    //      tv.tv_usec/1000);
     return;
 }
 

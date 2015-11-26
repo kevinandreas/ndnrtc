@@ -12,10 +12,21 @@
 #define X_BYTE 1024
 #define JITTER_OFFSET 10
 #define COLLAPSE_OFFSET 500
-//#define ARC_DEBUG
 #define ARC_INTERVAL 50
 #define MIN_RTT_EXPIRE 30000
 #define FIRST_CHALLENGE_RATIO 0.1
+#define STOP_CHALLENGE_RATIO 0.05
+
+//#define ARC_DEBUG_INITIALIZE
+//#define ARC_DEBUG_TIMER
+//#define ARC_DEBUG_THREAD
+//#define ARC_DEBUG_STATE
+//#define ARC_DEBUG_ESTIMATE
+//#define ARC_DEBUG_RCVDATA
+//#define ARC_DEBUG_RCVDATA_DETAIL
+//#define ARC_DEBUG_SNDINTEREST
+
+
 
 #include <time.h>
 #include <sys/time.h>
