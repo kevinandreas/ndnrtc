@@ -8,12 +8,13 @@
 
 #define THREAD_MAX 10
 #define COUNT_SW_HIGH 10
-#define COUNT_SW_LOW 10
+#define COUNT_SW_LOW -10
 #define X_BYTE 1024
 #define JITTER_OFFSET 10
 //#define ARC_DEBUG
 #define ARC_INTERVAL 50
 #define MIN_RTT_EXPIRE 30000
+#define FIRST_CHALLENGE_RATIO 0.1
 
 #include <time.h>
 #include <sys/time.h>
@@ -118,8 +119,8 @@ namespace ndnrtc {
         void getNowTval(ArcTval *qt);
         long diffArcTval(const ArcTval* now_t, const ArcTval* prev_t);
         double getBitRateThread(const unsigned int threadId);
-        double convertBpsToPps(double bps);
-        double convertPpsToBps(double pps);
+        double convertKBpsToPps(double kbps);
+        double convertPpsToKBps(double pps);
         bool isHigherThread(const unsigned int threadId);
         bool isLowerThread(const unsigned int threadId);
         unsigned int getHigherThread(const unsigned int threadId);

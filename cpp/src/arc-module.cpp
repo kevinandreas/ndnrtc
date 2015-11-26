@@ -131,10 +131,10 @@ void ArcModule::updateIndicators(const ArcModule::ArcIndicators& indicators)
 #endif //ARC_DEBUG
             currThHist_ = new ArcHistry;
             arcState_ = arcStateNormal;
+	    countChallengePhase_ = 0;
         }
         
     } else if (consumerPhase_ == ConsumerPhaseFetch) {
-        countChallengePhase_ = 0;
         if (indicators.consumerPhase_ == ConsumerPhaseAdjust) {
 #ifdef ARC_DEBUG
             std::cout << "ArcModule updateIndicators() NDNRTC state:Fetch->Adjust state_check:" << arcStateCheck_ << std::endl;
@@ -164,6 +164,7 @@ void ArcModule::updateIndicators(const ArcModule::ArcIndicators& indicators)
             currThHist_ = new ArcHistry;
             nextThHist_ = new ArcHistry;
             arcState_ = arcStateNormal;
+	    countChallengePhase_ = 0;
         }
     }
     
@@ -207,6 +208,7 @@ void ArcModule::autoRateControl()
             && currThHist_ != NULL && nextThHist_ != NULL) {
             result_curr = currThHist_->nwEstimate();
             result_next = nextThHist_->nwEstimate();
+
             if (result_curr == EstNormal && result_next == EstNormal) {
                 nextInterestPps_ += (20 / sqrt (nextInterestPps_));
             } else if (result_curr == EstCongested && result_next == EstCongested) {
@@ -221,7 +223,7 @@ void ArcModule::autoRateControl()
             }
             
             if (nextInterestPps_ > 0) {
-                if (convertPpsToBps(nextInterestPps_)
+                if (convertPpsToKBps(nextInterestPps_)
                     >= getBitRateThread(nextThreadId_) - getBitRateThread(currThreadId_)) {
                     /* switch thread of higher bitrate and waiting reportThreadEvent() */
                     arcState_ = onThreadSwitch;
@@ -231,7 +233,7 @@ void ArcModule::autoRateControl()
 #endif //ARC_DEBUG
                     callback_->onThreadShouldSwitch(currThreadId_);
                 } else {
-                    delta_rate = convertPpsToBps(nextInterestPps_) / getBitRateThread(nextThreadId_);
+                    delta_rate = convertPpsToKBps(nextInterestPps_) / getBitRateThread(nextThreadId_);
 #ifdef ARC_DEBUG
                     std::cout << "ArcModule autoRateControl() call onThreadChallenge() delta[" << delta_rate << "]" << std::endl;
 #endif //ARC_DEBUG
@@ -250,20 +252,19 @@ void ArcModule::autoRateControl()
             
         } else if (consumerPhase_ == ConsumerPhaseFetch && currThHist_ != NULL) {
             result_curr = currThHist_->nwEstimate();
-            
             if (result_curr == EstNormal) {
                 ++countChallengePhase_;
                 if (countChallengePhase_ >= COUNT_SW_HIGH) {
                     if (isHigherThread(currThreadId_)) {
                         /* start challenge phase and waiting state change notify via updateIndicators() */
                         nextThreadId_ = getHigherThread(currThreadId_);
-                        delta_rate = 0.05 * getBitRateThread(nextThreadId_);
-                        nextInterestPps_ = 0.05 * convertBpsToPps(delta_rate);
+                        delta_rate = FIRST_CHALLENGE_RATIO * getBitRateThread(nextThreadId_);
+                        nextInterestPps_ = FIRST_CHALLENGE_RATIO * convertKBpsToPps(delta_rate);
                         arcState_ = onChallengeStarted;
 #ifdef ARC_DEBUG
                         std::cout << "ArcModule autoRateControl() call onChallengePhaseStarted() thread_id[" << nextThreadId_ << "]" << std::endl;
 #endif //ARC_DEBUG
-                        callback_->onChallengePhaseStarted(nextThreadId_, nextInterestPps_);
+                        callback_->onChallengePhaseStarted(nextThreadId_, FIRST_CHALLENGE_RATIO);
                     }
                 }
             } else if (result_curr == EstCongested) {
@@ -327,15 +328,15 @@ double ArcModule::getBitRateThread(const unsigned int threadId)
     return 0;
 }
 
-double ArcModule::convertBpsToPps(double bps)
+double ArcModule::convertKBpsToPps(double kbps)
 {
-    return (bps / (8 * X_BYTE));
+    return ((kbps * 1024) / (8 * X_BYTE));
 }
 
 
-double ArcModule::convertPpsToBps(double pps)
+double ArcModule::convertPpsToKBps(double pps)
 {
-    return (8 * X_BYTE * pps);
+    return ((8 * X_BYTE * pps) / 1024);
 }
 
 
@@ -555,6 +556,9 @@ enum EstResult ArcHistry::nwEstimate()
     
     if (rx_count > 0) {
         avg_rtt = sum_rtt / rx_count;
+
+	//std::cout << "avg_rtt " << avg_rtt << " min_rtt " << minRtt_ << std::endl;
+
         if (prevAvgRtt_ == 0)
             prevAvgRtt_ = avg_rtt;
 	prev_avg_rtt = prevAvgRtt_;
