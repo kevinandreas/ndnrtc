@@ -150,17 +150,18 @@ namespace ndnrtc {
 			       uint32_t interestNonce);
         void interestRetransmit(const std::string &name,
                                 unsigned int threadId);
-        void dataReceived(const std::string &name,
+        void dataReceivedX(const std::string &name,
                           unsigned int threadId,
                           unsigned int ndnPacketSize,
 			  uint32_t dataNonce,
 			  uint32_t dGen);
-        enum EstResult nwEstimate();
+        enum EstResult nwEstimate(long interval);
         
     private:
         uint32_t indexSeq_, lastRcvSeq_, lastEstSeq_;
         double prevAvgRtt_, minRtt_, minRttCandidate_;
         double avgDataSize_;
+	unsigned int sumDataSize_;
         long offsetJitter_, offsetCollapse_;
         ArcTval updateMinRttTval_;
         bool congestionSign_;

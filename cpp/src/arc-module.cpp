@@ -115,9 +115,9 @@ void ArcModule::dataReceivedX(const std::string &interestName,
     if (!(consumerPhase_ == ConsumerPhaseFetch || consumerPhase_ == ConsumerPhaseChallenge)) return;
     
     if (threadId == currThreadId_ && currThHist_ != NULL) {
-        currThHist_->dataReceived(interestName, threadId, ndnPacketSize, dataNonce, dGen);
+        currThHist_->dataReceivedX(interestName, threadId, ndnPacketSize, dataNonce, dGen);
     } else if (threadId == nextThreadId_ && nextThHist_ != NULL) {
-        nextThHist_->dataReceived(interestName, threadId, ndnPacketSize, dataNonce, dGen);
+        nextThHist_->dataReceivedX(interestName, threadId, ndnPacketSize, dataNonce, dGen);
     }
     return;
 }
@@ -194,10 +194,12 @@ void ArcModule::autoRateControl()
     EstResult result_curr, result_next;
     double delta_rate;
     ArcTval tv;
+    long interval;
     
     getNowTval(&tv);
+    interval = diffArcTval(&tv, &arcCallTval_);
 #ifdef ARC_DEBUG_TIMER
-    std::cout << "ArcModule autoRateControl call interval:" << diffArcTval(&tv, &arcCallTval_) << "[ms]" << std::endl;
+    std::cout << "ArcModule autoRateControl call interval:" << interval << "[ms]" << std::endl;
 #endif //ARC_DEBUG_TIMER
     arcCallTval_ = tv;
     
@@ -207,8 +209,8 @@ void ArcModule::autoRateControl()
         /* Adaptive Rate Control for Challenge Phase */
         if (consumerPhase_ == ConsumerPhaseChallenge
             && currThHist_ != NULL && nextThHist_ != NULL) {
-            result_curr = currThHist_->nwEstimate();
-            result_next = nextThHist_->nwEstimate();
+            result_curr = currThHist_->nwEstimate(interval);
+            result_next = nextThHist_->nwEstimate(interval);
 
 #ifdef ARC_DEBUG_ESTIMATE
 	    std::cout << "ArcModule autoRateControl on Challenge Phase thread_id[curr:" << currThreadId_ << " next:" << nextThreadId_ << "] curr_result[" << result_curr << "] next_result [" << result_next << "]" << std::endl;
@@ -271,9 +273,9 @@ void ArcModule::autoRateControl()
             }
 
 
-	
+	/* Adaptive Rate Control for Fetching Phase */
         } else if (consumerPhase_ == ConsumerPhaseFetch && currThHist_ != NULL) {
-            result_curr = currThHist_->nwEstimate();
+            result_curr = currThHist_->nwEstimate(interval);
 #ifdef ARC_DEBUG_ESTIMATE
 	    std::cout << "ArcModule autoRateControl on Fetching Phase thread_id[" << currThreadId_ << "] result[" << result_curr << "]" << std::endl;
 #endif //ARC_DEBUG_ESTIMATE
@@ -449,6 +451,7 @@ ArcHistry::ArcHistry()
     indexSeq_ = lastRcvSeq_ = lastEstSeq_ = 0;
     prevAvgRtt_ = minRtt_ = minRttCandidate_ = 0;
     avgDataSize_ = 0;
+    sumDataSize_ = 0;
     offsetJitter_ = JITTER_OFFSET;
     offsetCollapse_ = COLLAPSE_OFFSET;
     congestionSign_ = false;
@@ -486,7 +489,7 @@ void ArcHistry::interestRetransmit(const std::string &name,
 }
 
 
-void ArcHistry::dataReceived(const std::string &name,
+void ArcHistry::dataReceivedX(const std::string &name,
                              unsigned int threadId,
                              unsigned int ndnPacketSize,
                              uint32_t dataNonce,
@@ -501,7 +504,8 @@ void ArcHistry::dataReceived(const std::string &name,
     if (avgDataSize_ == 0)
         avgDataSize_ = ndnPacketSize;
     avgDataSize_ = 0.9 * avgDataSize_ + 0.1 * ndnPacketSize;
-    
+    sumDataSize_ += ndnPacketSize;
+
     name_map& nmap = InterestHistries_.get<i_name> ();
     name_map::iterator entry = nmap.find(name);
     if (entry == nmap.end ()) return;
@@ -554,7 +558,7 @@ void ArcHistry::dataReceived(const std::string &name,
 }
 
 
-enum EstResult ArcHistry::nwEstimate()
+enum EstResult ArcHistry::nwEstimate(long interval)
 {
     uint32_t start_seq = lastEstSeq_ + 1;
     unsigned int rx_count = 0;
@@ -563,6 +567,7 @@ enum EstResult ArcHistry::nwEstimate()
     double avg_rtt = 0;
     double prev_avg_rtt;
     unsigned int tid;
+    long avg_throughput = 0;
     
     if (diffSeq(lastRcvSeq_, lastEstSeq_) <= 0) return EstUnclear;
     
@@ -589,6 +594,9 @@ enum EstResult ArcHistry::nwEstimate()
         }
     }
     
+    avg_throughput = (sumDataSize_ * 8 * 1000) / (interval * 1024);
+    sumDataSize_ = 0;
+
     if (rx_count > 0) {
         avg_rtt = sum_rtt / rx_count;
 
@@ -598,7 +606,7 @@ enum EstResult ArcHistry::nwEstimate()
 	prevAvgRtt_ = avg_rtt;
 
 #ifdef ARC_DEBUG_ESTIMATE
-	std::cout << "ArcModule nwEstimate thread_id[" << tid << "] avg_rtt[" << avg_rtt << "] prev_rtt [" << prevAvgRtt_ << "] min_rtt[" << minRtt_ << "num_of_data[" << rx_count << "]" << std::endl;
+	std::cout << "ArcModule nwEstimate thread_id[" << tid << "] avg_rtt[" << avg_rtt << "] prev_rtt [" << prevAvgRtt_ << "] min_rtt[" << minRtt_ << "num_of_data[" << rx_count << "] avg_throughput[" << avg_throughput << "kbps]"<< std::endl;
 #endif //ARC_DEBUG_ESTIMATE
 
 	if (avg_rtt > (minRtt_ + offsetCollapse_))
