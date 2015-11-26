@@ -94,6 +94,7 @@ void ArcModule::interestRetransmit(const std::string &name,
     return;
 }
 
+
 void ArcModule::dataReceivedX(const std::string &interestName,
 			      const std::string &dataName,
 			      unsigned int threadId,
@@ -408,7 +409,7 @@ unsigned int ArcModule::getLowerThread(const unsigned int threadId)
 ArcHistry::ArcHistry()
 {
     indexSeq_ = lastRcvSeq_ = lastEstSeq_ = 0;
-    prevAvgRtt_ = minRtt_ = minRttCandidate_ = std::numeric_limits<long>::max ();
+    prevAvgRtt_ = minRtt_ = minRttCandidate_ = 0;
     avgDataSize_ = 0;
     offsetJitter_ = JITTER_OFFSET;
     congestionSign_ = false;
@@ -455,7 +456,7 @@ void ArcHistry::dataReceived(const std::string &name,
     ArcTval tv;
     uint32_t seq, diff_seq;
     double cur_rtt;
- 
+
     getNowTval(&tv);
     
     if (avgDataSize_ == 0)
@@ -469,19 +470,19 @@ void ArcHistry::dataReceived(const std::string &name,
     diff_seq = diffSeq (seq, lastRcvSeq_);
     if (diff_seq > 0)
         lastRcvSeq_ = seq;
-    
+        
     if (entry->GetNonce == dataNonce)
-        cur_rtt = drdPrime - dGen;
+        cur_rtt = diffArcTval(tv, entry->getTxTime ()) - dGen;
     else
-        cur_rtt = drdPrime;
+        cur_rtt = diffArcTval(tv, entry->getTxTime ());
 
     // update entry of Interest history
     InterestHistry ih = *entry;
     ++ih.rx_count;
     if (ih.rx_count == 1) {
         ih.rx_time = tv;
-        ih.rtt_prime = drdPrime;
-	ih.rtt_estimate = drdPrime - dGen;
+        ih.rtt_prime = diffArcTval(tv, entry->getTxTime ());
+	ih.rtt_estimate = diffArcTval(tv, entry->getTxTime ()) - dGen;
 	if (ih.nonce == dataNonce)
 	  ih.is_original = true;
 	else
@@ -493,8 +494,8 @@ void ArcHistry::dataReceived(const std::string &name,
     if (cur_rtt > 0) {
         long diff_rtt;
         // init param for first data receive
-        if (minRtt_ == std::numeric_limits<long>::max ()
-            && minRttCandidate_ == std::numeric_limits<long>::max ()) {
+        if (minRtt_ == 0
+            && minRttCandidate_ == 0) {
             minRtt_ = minRttCandidate_ = cur_rtt;
             updateMinRttTval_ = tv;
         }
@@ -546,7 +547,7 @@ enum EstResult ArcHistry::nwEstimate()
     
     if (rx_count > 0) {
         avg_rtt = sum_rtt / rx_count;
-        if (prevAvgRtt_ == std::numeric_limits<long>::max ())
+        if (prevAvgRtt_ == 0)
             prevAvgRtt_ = avg_rtt;
 	prev_avg_rtt = prevAvgRtt_;
 	prevAvgRtt_ = avg_rtt;
@@ -603,15 +604,15 @@ long ArcHistry::diffArcTval(const ArcTval* now_t, const ArcTval* prev_t){
 
 uint32_t ArcHistry::diffSeq (uint32_t a, uint32_t b)
 {
-  uint32_t diff;
-  if (a >= b) {
-    diff = a - b;
-  }
-  else {
-    if ((b - a) > (std::numeric_limits<uint32_t>::max () / 2))
-      diff = a + (std::numeric_limits<uint32_t>::max () - b);
-    else
-      diff = a - b;
-  }
-  return diff;
+    uint32_t diff;
+    if (a >= b) {
+        diff = a - b;
+    }
+    else {
+        if ((b - a) > (std::numeric_limits<uint32_t>::max () / 2))
+            diff = a + (std::numeric_limits<uint32_t>::max () - b);
+        else
+            diff = a - b;
+    }
+    return diff;
 }

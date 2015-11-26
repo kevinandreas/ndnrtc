@@ -218,8 +218,9 @@ void
 VideoConsumer::onInterestIssued(const boost::shared_ptr<const ndn::Interest>& interest)
 {
     int threadIdx = threadIdxMap_[NdnRtcNamespace::getThreadName(interest->getName())];
+    uint32_t nonce = NdnRtcUtils::blobToNonce(interest->getNonce());
     
-    arcModule_->interestExpressed(interest->getName().toUri(),threadIdx);
+    arcModule_->interestExpressed(interest->getName().toUri(),threadIdx, nonce);
 }
 
 void
@@ -227,7 +228,19 @@ VideoConsumer::onDataArrived(const boost::shared_ptr<const Interest>& interest,
                              const boost::shared_ptr<ndn::Data>& data)
 {
     std::string threadName = NdnRtcNamespace::getThreadName(data->getName());
-    arcModule_->dataReceived(interest->getName().toUri(),
-                             data->getName().toUri(), getThreadIdx(threadName),
-                             data->getDefaultWireEncoding().size());
+    SegmentData segmentData;
+    
+    if (RESULT_GOOD(SegmentData::segmentDataFromRaw(data->getContent().size(),
+                                                    data->getContent().buf(),
+                                                    segmentData)))
+    {
+        SegmentData::SegmentMetaInfo segmentMeta = segmentData.getMetadata();
+        
+        arcModule_->dataReceived(interest->getName().toUri(),
+                                 data->getName().toUri(),
+                                 getThreadIdx(threadName),
+                                 data->getDefaultWireEncoding().size(),
+                                 segmentMeta.interestNonce_,
+                                 segmentMeta.generationDelay_);
+    }
 }

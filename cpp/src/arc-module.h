@@ -141,7 +141,7 @@ namespace ndnrtc {
         
     private:
         uint32_t indexSeq_, lastRcvSeq_, lastEstSeq_;
-        long prevAvgRtt_, minRtt_, minRttCandidate_;
+        double prevAvgRtt_, minRtt_, minRttCandidate_;
         double avgDataSize_;
         long offsetJitter_;
         ArcTval updateMinRttTval_;
