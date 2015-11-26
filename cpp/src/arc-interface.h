@@ -85,9 +85,11 @@ namespace ndnrtc {
          * Called by NDN-RTC every time new Interest is issued
          * @param name -	Interest name
          * @param threadId -ID of the media thread issued Interest belongs to
+         * @param interestNonce - Interest nonce value
          */
         virtual void interestExpressed(const std::string &name,
-                                       unsigned int threadId) = 0;
+                                       unsigned int threadId,
+                                       uint32_t interestNonce) = 0;
 
         /**
          * Called by NDN-RTC every time Interest retransmission happened
@@ -95,8 +97,7 @@ namespace ndnrtc {
          * @param threadId -ID of the media thread issued Interest belongs to
          */
         virtual void interestRetransmit(const std::string &name,
-                                     	unsigned int threadId,
-                                        uint32_t interestNonce) = 0;
+                                     	unsigned int threadId) = 0;
 
         /**
          * Called by NDN-RTC every time Data segment has been received
