@@ -11,6 +11,7 @@
 #define COUNT_SW_LOW -10
 #define X_BYTE 1024
 #define JITTER_OFFSET 10
+#define COLLAPSE_OFFSET 500
 //#define ARC_DEBUG
 #define ARC_INTERVAL 50
 #define MIN_RTT_EXPIRE 30000
@@ -37,6 +38,7 @@ namespace ndnrtc {
         EstNormal,
         EstUnclear,
         EstCongested,
+	EstCollapse,
     };
     
     struct ArcTval {
@@ -148,7 +150,7 @@ namespace ndnrtc {
         uint32_t indexSeq_, lastRcvSeq_, lastEstSeq_;
         double prevAvgRtt_, minRtt_, minRttCandidate_;
         double avgDataSize_;
-        long offsetJitter_;
+        long offsetJitter_, offsetCollapse_;
         ArcTval updateMinRttTval_;
         bool congestionSign_;
         

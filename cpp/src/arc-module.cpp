@@ -126,6 +126,7 @@ void ArcModule::updateIndicators(const ArcModule::ArcIndicators& indicators)
 {
     if (consumerPhase_ == ConsumerPhaseAdjust) {
         if (indicators.consumerPhase_ == ConsumerPhaseFetch) {
+            std::cout << "ArcModule updateIndicators() NDNRTC state:Adjust->Fetch state_check:" << arcStateCheck_ << std::endl;
 #ifdef ARC_DEBUG
             std::cout << "ArcModule updateIndicators() NDNRTC state:Adjust->Fetch state_check:" << arcStateCheck_ << std::endl;
 #endif //ARC_DEBUG
@@ -136,6 +137,7 @@ void ArcModule::updateIndicators(const ArcModule::ArcIndicators& indicators)
         
     } else if (consumerPhase_ == ConsumerPhaseFetch) {
         if (indicators.consumerPhase_ == ConsumerPhaseAdjust) {
+            std::cout << "ArcModule updateIndicators() NDNRTC state:Fetch->Adjust state_check:" << arcStateCheck_ << std::endl;
 #ifdef ARC_DEBUG
             std::cout << "ArcModule updateIndicators() NDNRTC state:Fetch->Adjust state_check:" << arcStateCheck_ << std::endl;
 #endif //ARC_DEBUG
@@ -146,6 +148,7 @@ void ArcModule::updateIndicators(const ArcModule::ArcIndicators& indicators)
         if (indicators.consumerPhase_ == ConsumerPhaseChallenge) {
             if (arcState_ != onChallengeStarted)
                 arcStateCheck_ = false;
+            std::cout << "ArcModule updateIndicators() NDNRTC state:Fetch->Challenge state_check:" << arcStateCheck_ << std::endl;
 #ifdef ARC_DEBUG
             std::cout << "ArcModule updateIndicators() NDNRTC state:Fetch->Challenge state_check:" << arcStateCheck_ << std::endl;
 #endif //ARC_DEBUG
@@ -157,6 +160,7 @@ void ArcModule::updateIndicators(const ArcModule::ArcIndicators& indicators)
         if (indicators.consumerPhase_ == ConsumerPhaseFetch) {
             if (arcState_ != onChallengeStopped)
                 arcStateCheck_ = false;
+            std::cout << "ArcModule updateIndicators() NDNRTC state:Challenge->Fetch state_check:" << arcStateCheck_ << std::endl;
 #ifdef ARC_DEBUG
             std::cout << "ArcModule updateIndicators() NDNRTC state:Challenge->Fetch state_check:" << arcStateCheck_ << std::endl;
 #endif //ARC_DEBUG
@@ -218,10 +222,23 @@ void ArcModule::autoRateControl()
             } else if (result_curr == EstCongested && result_next == EstNormal) {
                 nextInterestPps_ -= (0.5 * sqrt (nextInterestPps_));
                 // there is another option that call onThreadShouldSwitch([lower thread id]) immediately
+            } else if (result_curr == EstCollapse || result_next == EstCollapse) {
+	      if (isLowerThread(currThreadId_)) {
+		/* switch thread of lower bitrate and waiting reportThreadEvent() */
+		callback_->onThreadChallenge(0);
+		currThreadId_ = getLowerThread(currThreadId_);
+		arcState_ = onThreadSwitch;
+#ifdef ARC_DEBUG
+		std::cout << "ArcModule autoRateControl() call onThreadShouldSwitch() thread_id[" << currThreadId_ << "]" << std::endl;
+#endif //ARC_DEBUG
+		callback_->onThreadShouldSwitch(currThreadId_);
+	      }
             } else {
                 // no process
             }
-            
+
+	    //std::cout << << std::endl;
+
             if (nextInterestPps_ > 0) {
                 if (convertPpsToKBps(nextInterestPps_)
                     >= getBitRateThread(nextThreadId_) - getBitRateThread(currThreadId_)) {
@@ -280,7 +297,18 @@ void ArcModule::autoRateControl()
                         callback_->onThreadShouldSwitch(currThreadId_);
                     }
                 }
-            }
+            } else if (result_curr == EstCollapse) {
+	        if (isLowerThread(currThreadId_)) {
+		  /* switch thread of lower bitrate and waiting reportThreadEvent() */
+		  currThreadId_ = getLowerThread(currThreadId_);
+		  arcState_ = onThreadSwitch;
+#ifdef ARC_DEBUG
+		  std::cout << "ArcModule autoRateControl() call onThreadShouldSwitch() thread_id[" << c\
+		    urrThreadId_ << "]" << std::endl;
+#endif //ARC_DEBUG                                                                                             
+		  callback_->onThreadShouldSwitch(currThreadId_);
+		}
+	    }
         }
     }
     
@@ -420,6 +448,7 @@ ArcHistry::ArcHistry()
     prevAvgRtt_ = minRtt_ = minRttCandidate_ = 0;
     avgDataSize_ = 0;
     offsetJitter_ = JITTER_OFFSET;
+    offsetCollapse_ = COLLAPSE_OFFSET;
     congestionSign_ = false;
 }
 
@@ -563,6 +592,9 @@ enum EstResult ArcHistry::nwEstimate()
             prevAvgRtt_ = avg_rtt;
 	prev_avg_rtt = prevAvgRtt_;
 	prevAvgRtt_ = avg_rtt;
+
+	if (avg_rtt > (minRtt_ + offsetCollapse_))
+	    return EstCollapse;
 
         if (avg_rtt <= (minRtt_ + offsetJitter_) && !congestionSign_) {
             return EstNormal;
