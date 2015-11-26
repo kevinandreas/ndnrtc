@@ -195,6 +195,7 @@ namespace ndnrtc
         // target size
         ConsumerStatusFetching, // consumer has finished buffering and switched
         // to normal operating fetching mode
+        ConsumerStatusChallenge // consumer is in challenging phase
     } ConsumerStatus;
     
     // playback events occur at the moment when frame is taken from the buffer

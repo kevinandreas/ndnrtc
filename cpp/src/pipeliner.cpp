@@ -1480,6 +1480,9 @@ ChallengePipeliner::requestChallengingData(bool isKey)
     Name parityPrefix = framePrefix;
     NdnRtcNamespace::appendDataKind(parityPrefix, true);
     
+    // increment
+    frameNo++;
+    
     LogTraceC << "available seg # for challenge: "
     << (isKey?"KEY ":"DELTA ")
     << "data " << dataSeg

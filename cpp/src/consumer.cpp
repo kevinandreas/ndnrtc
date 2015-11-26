@@ -306,6 +306,10 @@ Consumer::onStateChanged(const int &oldState, const int &newState)
                 status = ConsumerStatusFetching;
                 break;
                 
+            case Pipeliner2::StateChallenging:
+                status = ConsumerStatusChallenge;
+                break;
+                
             case Pipeliner2::StateInactive:
             default:
                 status = ConsumerStatusStopped;
