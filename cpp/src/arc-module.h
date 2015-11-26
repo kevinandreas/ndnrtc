@@ -12,6 +12,7 @@
 #define X_BYTE 1024
 #define JITTER_OFFSET 10
 #define ARC_DEBUG
+#define ARC_INTERVAL 50
 #define MIN_RTT_EXPIRE 30000
 
 #include <time.h>
@@ -75,13 +76,19 @@ namespace ndnrtc {
         void interestRetransmit(const std::string &name,
                                 unsigned int threadId);
         void dataReceived(const std::string &interestName,
-			  const std::string &dataName,
+                          const std::string &dataName,
                           unsigned int threadId,
                           unsigned int ndnPacketSize);
+        void dataReceivedX(const std::string &interestName,
+                           const std::string &dataName,
+                           unsigned int threadId,
+                           unsigned int ndnPacketSize,
+                           double drdPrime,
+                           double dGen,
+                           bool isOriginal);
         void updateIndicators(const ArcIndicators& indicators);
         void reportThreadEvent(const ThreadEvent& event);
         void autoRateControl();
-        //void autoRateControl(const boost::system::error_code &event);
         
     private:
         IRateAdaptationModuleCallback* callback_;
@@ -130,12 +137,15 @@ namespace ndnrtc {
                                 unsigned int threadId);
         void dataReceived(const std::string &name,
                           unsigned int threadId,
-                          unsigned int ndnPacketSize);
+                          unsigned int ndnPacketSize,
+                          double drdPrime,
+                          double dGen,
+                          bool isOriginal);
         enum EstResult nwEstimate();
         
     private:
         uint32_t indexSeq_, lastRcvSeq_, lastEstSeq_;
-        long prevAvgRtt_, minRtt_, minRttCandidate_;
+        double prevAvgRtt_, minRtt_, minRttCandidate_;
         double avgDataSize_;
         long offsetJitter_;
         ArcTval updateMinRttTval_;
@@ -149,21 +159,27 @@ namespace ndnrtc {
             InterestHistry (const uint32_t _seq, const std::string& _name,
                             const unsigned int _tid, const ArcTval _txtime) :
             seq (_seq), name (_name), tid (_tid), tx_time (_txtime),
-            rx_count (0), retx_flag (false), rtt (0) { };
+            rx_count (0), is_retx (false), rtt_prime (0), rtt_estimate (0),
+            is_original (false) { };
             uint32_t seq;
             std::string name;
             unsigned int tid;
             ArcTval tx_time;
             ArcTval rx_time;
-            bool retx_flag;
-            double rtt;
+            bool is_retx;
+            double rtt_prime;
+            double rtt_estimate;
+            bool is_original;
             unsigned int rx_count;
             uint32_t GetSeq () const { return seq; }
             std::string GetName () const { return name; }
             unsigned int GetTid () const { return tid; }
             ArcTval GetTxTime () const { return tx_time; }
             ArcTval GetRxTime () const { return rx_time; }
-            double GetRtt () const { return rtt; }
+            double GetRttPrime () const { return rtt_prime; }
+            double GetRttEstimate () const { return rtt_estimate; }
+            bool IsRetx () const { return is_retx; }
+            bool IsOriginal () const { return is_original; }
             unsigned int GetRxCount () const { return rx_count; }
         };
         
