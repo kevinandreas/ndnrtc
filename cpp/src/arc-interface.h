@@ -136,8 +136,8 @@ namespace ndnrtc {
                                    const std::string &dataName,
                                    unsigned int threadId,
                                    unsigned int ndnPacketSize,
-                                   uint32_t dataNonce,
-                                   double dGen) = 0;
+                                   int32_t dataNonce,
+                                   int32_t dGen) = 0;
         
         /**
          * Called by NDN-RTC whenever any of the indicators has been updated
