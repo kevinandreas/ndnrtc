@@ -94,13 +94,20 @@ void ArcModule::interestRetransmit(const std::string &name,
     return;
 }
 
+void ArcModule::dataReceived(const std::string &interestName,
+                             const std::string &dataName,
+                             unsigned int threadId,
+                             unsigned int ndnPacketSize)
+{
+    throw std::runtime_error("unimplemented method");
+}
 
 void ArcModule::dataReceivedX(const std::string &interestName,
-			      const std::string &dataName,
-			      unsigned int threadId,
-			      unsigned int ndnPacketSize,
-			      uint32_t dataNonce,
-			      uint32_t dGen)
+                              const std::string &dataName,
+                              unsigned int threadId,
+                              unsigned int ndnPacketSize,
+                              int32_t dataNonce,
+                              int32_t dGen)
 {
 #ifdef ARC_DEBUG
     std::cout << "ArcModule dataReceived() thread_id[" << threadId << "] name[" << interestName << "] size[" << ndnPacketSize << "]" << std::endl;

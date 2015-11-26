@@ -76,12 +76,16 @@ namespace ndnrtc {
 			       uint32_t interestNonce);
         void interestRetransmit(const std::string &name,
                                 unsigned int threadId);
+        void dataReceived(const std::string &interestName,
+                          const std::string &dataName,
+                          unsigned int threadId,
+                          unsigned int ndnPacketSize);
         void dataReceivedX(const std::string &interestName,
-			   const std::string &dataName,
-			   unsigned int threadId,
-			   unsigned int ndnPacketSize,
-			   uint32_t dataNonce,
-			   uint32_t dGen);
+                           const std::string &dataName,
+                           unsigned int threadId,
+                           unsigned int ndnPacketSize,
+                           int32_t dataNonce,
+                           int32_t dGen);
         void updateIndicators(const ArcIndicators& indicators);
         void reportThreadEvent(const ThreadEvent& event);
         void autoRateControl();
