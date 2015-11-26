@@ -60,7 +60,8 @@ int ArcModule::initialize(IRateAdaptationModuleCallback* const callback,
 }
 
 void ArcModule::interestExpressed(const std::string &name,
-                                  unsigned int threadId)
+                                  unsigned int threadId,
+				  uint32_t interestNoce)
 {
 #ifdef ARC_DEBUG
     std::cout << "ArcModule interestExpressed() thread_id[" << threadId << "] name[" << name << "]" << std::endl;
@@ -70,9 +71,9 @@ void ArcModule::interestExpressed(const std::string &name,
     if (!(consumerPhase_ == ConsumerPhaseFetch || consumerPhase_ == ConsumerPhaseChallenge)) return;
     
     if (threadId == currThreadId_ && currThHist_ != NULL) {
-        currThHist_->interestExpressed(name, threadId);
+        currThHist_->interestExpressed(name, threadId, interestNonce);
     } else if (threadId == nextThreadId_ && nextThHist_ != NULL) {
-        nextThHist_->interestExpressed(name, threadId);
+        nextThHist_->interestExpressed(name, threadId, interestNonce);
     }
     return;
 }
@@ -93,21 +94,13 @@ void ArcModule::interestRetransmit(const std::string &name,
     return;
 }
 
-void ArcModule::dataReceived(const std::string &interestName,
-                             const std::string &dataName,
-                             unsigned int threadId,
-                             unsigned int ndnPacketSize)
-{
-    throw std::runtime_error("unimplemented method");
-}
 
 void ArcModule::dataReceivedX(const std::string &interestName,
-                              const std::string &dataName,
-                              unsigned int threadId,
-                              unsigned int ndnPacketSize,
-                              double drdPrime,
-                              double dGen,
-                              bool isOriginal)
+			      const std::string &dataName,
+			      unsigned int threadId,
+			      unsigned int ndnPacketSize,
+			      uint32_t dataNonce,
+			      uint32_t dGen)
 {
 #ifdef ARC_DEBUG
     std::cout << "ArcModule dataReceived() thread_id[" << threadId << "] name[" << interestName << "] size[" << ndnPacketSize << "]" << std::endl;
@@ -115,9 +108,9 @@ void ArcModule::dataReceivedX(const std::string &interestName,
     if (!(consumerPhase_ == ConsumerPhaseFetch || consumerPhase_ == ConsumerPhaseChallenge)) return;
     
     if (threadId == currThreadId_ && currThHist_ != NULL) {
-        currThHist_->dataReceived(interestName, threadId, ndnPacketSize, drdPrime, dGen, isOriginal);
+        currThHist_->dataReceived(interestName, threadId, ndnPacketSize, dataNonce, dGen);
     } else if (threadId == nextThreadId_ && nextThHist_ != NULL) {
-        nextThHist_->dataReceived(interestName, threadId, ndnPacketSize, drdPrime, dGen, isOriginal);
+        nextThHist_->dataReceived(interestName, threadId, ndnPacketSize, dataNonce, dGen);
     }
     return;
 }
@@ -429,12 +422,13 @@ ArcHistry::~ArcHistry()
 
 
 void ArcHistry::interestExpressed(const std::string &name,
-                                  unsigned int threadId)
+                                  unsigned int threadId,
+				  uint32_t interestNonce)
 {
     ArcTval tv;
     getNowTval(&tv);
     ++indexSeq_;
-    InterestHistries_.insert (InterestHistry (indexSeq_, name, threadId, tv));
+    InterestHistries_.insert (InterestHistry (indexSeq_, name, threadId, tv, interestNonce));
     return;
 }
 
@@ -456,14 +450,13 @@ void ArcHistry::interestRetransmit(const std::string &name,
 void ArcHistry::dataReceived(const std::string &name,
                              unsigned int threadId,
                              unsigned int ndnPacketSize,
-                             double drdPrime,
-                             double dGen,
-                             bool isOriginal)
+                             uint32_t dataNonce,
+                             uint32_t dGen)
 {
     ArcTval tv;
     uint32_t seq, diff_seq;
     double cur_rtt;
-    
+
     getNowTval(&tv);
     
     if (avgDataSize_ == 0)
@@ -477,23 +470,26 @@ void ArcHistry::dataReceived(const std::string &name,
     diff_seq = diffSeq (seq, lastRcvSeq_);
     if (diff_seq > 0)
         lastRcvSeq_ = seq;
-    
-    if (isOriginal)
-        cur_rtt = drdPrime - dGen;
+        
+    if (entry->GetNonce == dataNonce)
+        cur_rtt = diffArcTval(tv, entry->getTxTime ()) - dGen;
     else
-        cur_rtt = drdPrime;
-    
+        cur_rtt = diffArcTval(tv, entry->getTxTime ());
+
     // update entry of Interest history
     InterestHistry ih = *entry;
     ++ih.rx_count;
     if (ih.rx_count == 1) {
         ih.rx_time = tv;
-        ih.rtt_prime = drdPrime;
-        ih.rtt_estimate = drdPrime - dGen;
-        ih.is_original = isOriginal;
+        ih.rtt_prime = diffArcTval(tv, entry->getTxTime ());
+	ih.rtt_estimate = diffArcTval(tv, entry->getTxTime ()) - dGen;
+	if (ih.nonce == dataNonce)
+	  ih.is_original = true;
+	else
+	  ih.is_original = false;
     }
     nmap.replace(entry, ih);
-    
+
     // update minimum rtt
     if (cur_rtt > 0) {
         long diff_rtt;
@@ -533,13 +529,13 @@ enum EstResult ArcHistry::nwEstimate()
         seq_map::iterator tmp_entry = smap.find(i);
         if (tmp_entry != smap.end ()) {
             if (!tmp_entry->IsRetx ()) {
-                if (tmp_entry->IsOriginal ()) {
-                    sum_rtt += tmp_entry->GetRttEstimate ();
-                    ++rx_count;
-                } else {
-                    sum_rtt += tmp_entry->GetRttPrime ();
-                    ++rx_count;
-                }
+	        if (tmp_entry->IsOriginal ()) {
+		  sum_rtt += tmp_entry->GetRttEstimate ();
+		  ++rx_count;
+		} else {
+		  sum_rtt += tmp_entry->GetRttPrime ();
+		  ++rx_count;
+		}
             } else {
                 ++loss_count;
             }
@@ -553,9 +549,9 @@ enum EstResult ArcHistry::nwEstimate()
         avg_rtt = sum_rtt / rx_count;
         if (prevAvgRtt_ == 0)
             prevAvgRtt_ = avg_rtt;
-        prev_avg_rtt = prevAvgRtt_;
-        prevAvgRtt_ = avg_rtt;
-        
+	prev_avg_rtt = prevAvgRtt_;
+	prevAvgRtt_ = avg_rtt;
+
         if (avg_rtt <= (minRtt_ + offsetJitter_) && !congestionSign_) {
             return EstNormal;
         } else if (avg_rtt <= prev_avg_rtt ) {
@@ -572,7 +568,7 @@ enum EstResult ArcHistry::nwEstimate()
                 congestionSign_ = true;
                 return EstUnclear;
             }
-        }
+	}
     }
     return EstUnclear;
 }

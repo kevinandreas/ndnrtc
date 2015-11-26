@@ -11,7 +11,7 @@
 #define COUNT_SW_LOW 10
 #define X_BYTE 1024
 #define JITTER_OFFSET 10
-#define ARC_DEBUG
+//#define ARC_DEBUG
 #define ARC_INTERVAL 50
 #define MIN_RTT_EXPIRE 30000
 
@@ -72,20 +72,16 @@ namespace ndnrtc {
                        const CodecMode& codecMode,
                        std::vector<ThreadEntry> mediaThreads);
         void interestExpressed(const std::string &name,
-                               unsigned int threadId);
+                               unsigned int threadId,
+			       uint32_t interestNonce);
         void interestRetransmit(const std::string &name,
                                 unsigned int threadId);
-        void dataReceived(const std::string &interestName,
-                          const std::string &dataName,
-                          unsigned int threadId,
-                          unsigned int ndnPacketSize);
         void dataReceivedX(const std::string &interestName,
-                           const std::string &dataName,
-                           unsigned int threadId,
-                           unsigned int ndnPacketSize,
-                           double drdPrime,
-                           double dGen,
-                           bool isOriginal);
+			   const std::string &dataName,
+			   unsigned int threadId,
+			   unsigned int ndnPacketSize,
+			   uint32_t dataNonce,
+			   uint32_t dGen);
         void updateIndicators(const ArcIndicators& indicators);
         void reportThreadEvent(const ThreadEvent& event);
         void autoRateControl();
@@ -134,13 +130,13 @@ namespace ndnrtc {
         void interestExpressed(const std::string &name,
                                unsigned int threadId);
         void interestRetransmit(const std::string &name,
-                                unsigned int threadId);
+                                unsigned int threadId,
+				uint32_t interestNonce);
         void dataReceived(const std::string &name,
                           unsigned int threadId,
                           unsigned int ndnPacketSize,
-                          double drdPrime,
-                          double dGen,
-                          bool isOriginal);
+			  uint32_t dataNonce,
+			  uint32_t dGen);
         enum EstResult nwEstimate();
         
     private:
@@ -157,29 +153,32 @@ namespace ndnrtc {
         
         struct InterestHistry {
             InterestHistry (const uint32_t _seq, const std::string& _name,
-                            const unsigned int _tid, const ArcTval _txtime) :
-            seq (_seq), name (_name), tid (_tid), tx_time (_txtime),
-            rx_count (0), is_retx (false), rtt_prime (0), rtt_estimate (0),
-            is_original (false) { };
+                            const unsigned int _tid, const ArcTval _txtime,
+			    const uint32_t _nonce) :
+	    seq (_seq), name (_name), tid (_tid), tx_time (_txtime), nonce (_nonce),
+	    rx_count (0), is_retx (false), rtt_prime (0), rtt_estimate (0),
+	    is_original (false) { };
             uint32_t seq;
             std::string name;
             unsigned int tid;
             ArcTval tx_time;
             ArcTval rx_time;
             bool is_retx;
-            double rtt_prime;
-            double rtt_estimate;
-            bool is_original;
+            long rtt_prime;
+	    long rtt_estimate;
+	    uint32_t nonce;
+	    bool is_original;
             unsigned int rx_count;
             uint32_t GetSeq () const { return seq; }
             std::string GetName () const { return name; }
             unsigned int GetTid () const { return tid; }
             ArcTval GetTxTime () const { return tx_time; }
             ArcTval GetRxTime () const { return rx_time; }
-            double GetRttPrime () const { return rtt_prime; }
-            double GetRttEstimate () const { return rtt_estimate; }
-            bool IsRetx () const { return is_retx; }
-            bool IsOriginal () const { return is_original; }
+	    bool IsRetx () const { return is_retx; }
+            long GetRttPrime () const { return rtt_prime; }
+            long GetRttEstimate () const { return rtt_estimate; }
+	    uint32_t GetNonce () const { return nonce; }
+	    bool IsOriginal () const { return is_original; }
             unsigned int GetRxCount () const { return rx_count; }
         };
         
