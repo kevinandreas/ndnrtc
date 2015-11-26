@@ -95,7 +95,8 @@ namespace ndnrtc {
          * @param threadId -ID of the media thread issued Interest belongs to
          */
         virtual void interestRetransmit(const std::string &name,
-                                     	unsigned int threadId) = 0;
+                                     	unsigned int threadId,
+                                        uint32_t interestNonce) = 0;
 
         /**
          * Called by NDN-RTC every time Data segment has been received
@@ -115,22 +116,28 @@ namespace ndnrtc {
          *
          * Called by NDN-RTC every time Data segment has been received
          * @param name          - Data segment name
-         * @param threadId      - ID of the media thread received Data segment belongs to
+         * @param threadId      - ID of the media thread received Data segment 
+         *                      belongs to
          * @param ndnPacketSize - Full size (including NDN packet overhead) of
          *						Data segment packet (in  bytes)
-         * @param drdPrime      - DRD' calculated for received segment (difference b/w
-         *                      timestamps of interest expression and data receipt)
+         * @param dataNonce     - nonce value of the Interest that retrieved this
+         *                      data segment from consumer. Possible meanings:
+         *                          1) value is 0: data was produced before any
+         *                          Interest retrieved it
+         *                          2) value equals interestNonce of previously 
+         *                          issued Interest: data was retrieved from producer
+         *                          and Dgen is valid
+         *                          3) value is not 0 and doesn't equal interestNonce 
+         *                          of any previous Interest: data was retrieved by 
+         *                          another Consumer, dGen may be inaccurate
          * @param dGen          - generation delay for received data segment
-         * @param isOriginal    - boolean flag which indicates, whether data segment 
-         *                      originated from producer
          */
         virtual void dataReceivedX(const std::string &interestName,
                                    const std::string &dataName,
                                    unsigned int threadId,
                                    unsigned int ndnPacketSize,
-                                   double drdPrime,
-                                   double dGen,
-                                   bool isOriginal) = 0;
+                                   uint32_t dataNonce,
+                                   double dGen) = 0;
         
         /**
          * Called by NDN-RTC whenever any of the indicators has been updated
