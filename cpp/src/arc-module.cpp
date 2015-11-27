@@ -243,10 +243,9 @@ void ArcModule::autoRateControl()
 #ifdef ARC_DEBUG_ESTIMATE
 	    std::cout << "ArcModule autoRateControl on Challenge Phase extra_pps[" << nextInterestPps_ << "] extra_bitrate[" << convertPpsToKBps(nextInterestPps_) << "kbp] thread_bitrate[curr:" << getBitRateThread(currThreadId_) << " next:" << getBitRateThread(nextThreadId_) << "]" << std::endl;
 #endif //ARC_DEBUG_ESTIMATE
-
             if ( convertPpsToKBps(nextInterestPps_) >= (STOP_CHALLENGE_RATIO * getBitRateThread(nextThreadId_))) {
 	        if (convertPpsToKBps(nextInterestPps_)
-                    >= getBitRateThread(nextThreadId_) - getBitRateThread(currThreadId_)) {
+                    >= ((1 + SWITCH_HIGHER_SAFTIY_MARGIN) * (getBitRateThread(nextThreadId_) - getBitRateThread(currThreadId_)))) {
                     /* switch thread of higher bitrate and waiting reportThreadEvent() */
                     arcState_ = onThreadSwitch;
                     currThreadId_ = nextThreadId_;
@@ -261,7 +260,7 @@ void ArcModule::autoRateControl()
 #endif //ARC_DEBUG_THREAD
                     callback_->onThreadChallenge(delta_rate);
                 }
-            } else if (nextInterestPps_ <= 0) {
+            } else {
                 /* switch thread of lower bitrate and waiting reportThreadEvent() */
                 callback_->onThreadChallenge(0);
                 currThreadId_ = getLowerThread(currThreadId_);
@@ -286,7 +285,7 @@ void ArcModule::autoRateControl()
                         /* start challenge phase and waiting state change notify via updateIndicators() */
                         nextThreadId_ = getHigherThread(currThreadId_);
                         delta_rate = FIRST_CHALLENGE_RATIO * getBitRateThread(nextThreadId_);
-                        nextInterestPps_ = FIRST_CHALLENGE_RATIO * convertKBpsToPps(delta_rate);
+                        nextInterestPps_ = convertKBpsToPps(delta_rate);
                         arcState_ = onChallengeStarted;
 #ifdef ARC_DEBUG_THREAD
                         std::cout << "ArcModule calls onChallengePhaseStarted thread_id[" << nextThreadId_ << "]" << std::endl;
@@ -516,7 +515,7 @@ void ArcHistry::dataReceivedX(const std::string &name,
     if (diff_seq > 0)
         lastRcvSeq_ = seq;
     
-    // update entry of Interest history
+    /* update entry of Interest History */
     InterestHistry ih = *entry;
     ++ih.rx_count;
     if (ih.rx_count == 1) {
@@ -536,7 +535,7 @@ void ArcHistry::dataReceivedX(const std::string &name,
 #endif //ARC_DEBUG_RCVDATA_DETAIL
     nmap.replace(entry, ih);
 
-    // update minimum rtt
+    /* update minimum rtt */
     if (cur_rtt > 0) {
         long diff_rtt;
         // init param for first data receive
@@ -546,6 +545,8 @@ void ArcHistry::dataReceivedX(const std::string &name,
             updateMinRttTval_ = tv;
         }
         // update minimum RTT
+        if (minRtt_ > cur_rtt)
+            minRtt_ = cur_rtt;
         if (minRttCandidate_ > cur_rtt)
             minRttCandidate_ = cur_rtt;
         if (diffArcTval(&tv, &updateMinRttTval_) >  MIN_RTT_EXPIRE) {
@@ -573,6 +574,7 @@ enum EstResult ArcHistry::nwEstimate(long interval)
     
     seq_map& smap = InterestHistries_.get<i_seq> ();
     
+    /* serch entry of Interest Histry for a ARC estimation priod */
     for(uint32_t i = start_seq; i <= lastRcvSeq_; ++i) {
         seq_map::iterator tmp_entry = smap.find(i);
         if (tmp_entry != smap.end ()) {
@@ -593,10 +595,11 @@ enum EstResult ArcHistry::nwEstimate(long interval)
             smap.erase (i);
         }
     }
-    
+
+    /* calcurate average throughput and rtt, and then judge network condition */
+    /* if NDN had received data for a ARC estimation priod */
     avg_throughput = (sumDataSize_ * 8 * 1000) / (interval * 1024);
     sumDataSize_ = 0;
-
     if (rx_count > 0) {
         avg_rtt = sum_rtt / rx_count;
 
@@ -606,7 +609,7 @@ enum EstResult ArcHistry::nwEstimate(long interval)
 	prevAvgRtt_ = avg_rtt;
 
 #ifdef ARC_DEBUG_ESTIMATE
-	std::cout << "ArcModule nwEstimate thread_id[" << tid << "] avg_rtt[" << avg_rtt << "] prev_rtt [" << prevAvgRtt_ << "] min_rtt[" << minRtt_ << "num_of_data[" << rx_count << "] avg_throughput[" << avg_throughput << "kbps]"<< std::endl;
+	std::cout << "ArcModule nwEstimate thread_id[" << tid << "] avg_rtt[" << avg_rtt << "] prev_rtt [" << prev_avg_rtt << "] min_rtt[" << minRtt_ << "] num_of_data[" << rx_count << "] avg_throughput[" << avg_throughput << "kbps]"<< std::endl;
 #endif //ARC_DEBUG_ESTIMATE
 
 	if (avg_rtt > (minRtt_ + offsetCollapse_))
