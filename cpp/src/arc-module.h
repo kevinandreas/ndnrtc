@@ -11,10 +11,22 @@
 #define COUNT_SW_LOW -10
 #define X_BYTE 1024
 #define JITTER_OFFSET 10
-//#define ARC_DEBUG
+#define COLLAPSE_OFFSET 500
 #define ARC_INTERVAL 50
 #define MIN_RTT_EXPIRE 30000
 #define FIRST_CHALLENGE_RATIO 0.1
+#define STOP_CHALLENGE_RATIO 0.05
+
+//#define ARC_DEBUG_INITIALIZE
+//#define ARC_DEBUG_TIMER
+//#define ARC_DEBUG_THREAD
+//#define ARC_DEBUG_STATE
+//#define ARC_DEBUG_ESTIMATE
+//#define ARC_DEBUG_RCVDATA
+//#define ARC_DEBUG_RCVDATA_DETAIL
+//#define ARC_DEBUG_SNDINTEREST
+
+
 
 #include <time.h>
 #include <sys/time.h>
@@ -37,6 +49,7 @@ namespace ndnrtc {
         EstNormal,
         EstUnclear,
         EstCongested,
+	EstCollapse,
     };
     
     struct ArcTval {
@@ -137,18 +150,19 @@ namespace ndnrtc {
 			       uint32_t interestNonce);
         void interestRetransmit(const std::string &name,
                                 unsigned int threadId);
-        void dataReceived(const std::string &name,
+        void dataReceivedX(const std::string &name,
                           unsigned int threadId,
                           unsigned int ndnPacketSize,
 			  uint32_t dataNonce,
 			  uint32_t dGen);
-        enum EstResult nwEstimate();
+        enum EstResult nwEstimate(long interval);
         
     private:
         uint32_t indexSeq_, lastRcvSeq_, lastEstSeq_;
         double prevAvgRtt_, minRtt_, minRttCandidate_;
         double avgDataSize_;
-        long offsetJitter_;
+	unsigned int sumDataSize_;
+        long offsetJitter_, offsetCollapse_;
         ArcTval updateMinRttTval_;
         bool congestionSign_;
         
