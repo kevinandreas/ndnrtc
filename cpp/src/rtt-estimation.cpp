@@ -23,7 +23,8 @@ const double RttEstimation::RttStartEstimate = 30; // millseconds
 RttEstimation::RttEstimation(const boost::shared_ptr<statistics::StatisticsStorage>& statStorage,
                              const double& startEstimate):
 StatObject(statStorage),
-estimatorId_(NdnRtcUtils::setupMeanEstimator(0, startEstimate)),
+//estimatorId_(NdnRtcUtils::setupMeanEstimator(0, startEstimate)),
+estimatorId_(NdnRtcUtils::setupSlidingAverageEstimator(10)),
 generationDelayEstimatorId_(NdnRtcUtils::setupSlidingAverageEstimator(4))
 {}
 
@@ -42,7 +43,8 @@ RttEstimation::updateEstimation(int64_t rountripTimeMs,
     
     if (rawValue > 0)
     {
-        NdnRtcUtils::meanEstimatorNewValue(estimatorId_, rawValue);
+        NdnRtcUtils::slidingAverageEstimatorNewValue(estimatorId_, rawValue);
+//        NdnRtcUtils::meanEstimatorNewValue(estimatorId_, rawValue);
 
         double current = getCurrentEstimation();
         (*statStorage_)[Indicator::RttEstimation] = current;
@@ -61,13 +63,15 @@ RttEstimation::updateEstimation(int64_t rountripTimeMs,
         << rountripTimeMs << " " << generationDelay << endl;
     }
     
-    return NdnRtcUtils::currentMeanEstimation(estimatorId_);
+//    return NdnRtcUtils::currentMeanEstimation(estimatorId_);
+    return NdnRtcUtils::currentSlidingAverageValue(estimatorId_);
 }
 
 double
 RttEstimation::getCurrentEstimation() const
 {
-    return NdnRtcUtils::currentMeanEstimation(estimatorId_);
+    return NdnRtcUtils::currentSlidingAverageValue(estimatorId_);
+//    return NdnRtcUtils::currentMeanEstimation(estimatorId_);
 }
 
 double
@@ -80,5 +84,6 @@ void
 RttEstimation::reset()
 {
     LogTraceC << "reset" << endl;
-    NdnRtcUtils::resetMeanEstimator(estimatorId_);
+//    NdnRtcUtils::resetMeanEstimator(estimatorId_);
+    NdnRtcUtils::resetSlidingAverageEstimator(estimatorId_);
 }

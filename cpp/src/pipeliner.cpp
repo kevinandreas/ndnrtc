@@ -1531,5 +1531,6 @@ ChallengePipeliner::requestSegments(double& nSeg, const Name& framePrefix)
                                                        bind(&ChallengePipeliner::onTimeout, this, _1));
         
         nSeg -= 1;
+        segIdx++;
     }
 }
