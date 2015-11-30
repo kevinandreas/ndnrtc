@@ -449,6 +449,7 @@ ArcHistry::ArcHistry()
 {
     indexSeq_ = lastRcvSeq_ = lastEstSeq_ = 0;
     prevAvgRtt_ = minRtt_ = minRttCandidate_ = 0;
+    avgGenDelay_ = std::numeric_limits<long>::max ();
     avgDataSize_ = 0;
     sumDataSize_ = 0;
     offsetJitter_ = JITTER_OFFSET;
@@ -499,11 +500,19 @@ void ArcHistry::dataReceivedX(const std::string &name,
     double cur_rtt = 0;
 
     getNowTval(&tv);
-    
+
+    /* update average data size and amount of data size */
     if (avgDataSize_ == 0)
         avgDataSize_ = ndnPacketSize;
     avgDataSize_ = 0.9 * avgDataSize_ + 0.1 * ndnPacketSize;
     sumDataSize_ += ndnPacketSize;
+
+    /* update average generation delay */
+    /*
+    if (avgGenDelay_ == std::numeric_limits<long>::max ())
+        avgGenDelay_ = dGen;
+    avgGenDelay_ = ((avgGenDelay_ * 9) + dGen) / 10;
+    */
 
     name_map& nmap = InterestHistries_.get<i_name> ();
     name_map::iterator entry = nmap.find(name);
@@ -521,15 +530,22 @@ void ArcHistry::dataReceivedX(const std::string &name,
     if (ih.rx_count == 1) {
         ih.rx_time = tv;
         ih.rtt_prime = diffArcTval(&tv, &tv2);
-	ih.rtt_estimate = diffArcTval(&tv, &tv2) - dGen;
-	if (ih.nonce == dataNonce) {
-	  ih.is_original = true;
-	  cur_rtt = ih.rtt_estimate;
-	} else {
-	  ih.is_original = false;
-	  cur_rtt = ih.rtt_prime;
+	//ih.rtt_estimate = diffArcTval(&tv, &tv2) - avgGenDelay_;
+	if (ih.rtt_prime > dGen)
+	    ih.rtt_estimate = ih.rtt_prime - dGen;
+	else
+	    ih.rtt_estimate = ih.rtt_prime;
+	if (!ih.is_retx) {
+	    if (ih.nonce == dataNonce) {
+	        ih.is_original = true;
+		cur_rtt = ih.rtt_estimate;
+	    } else {
+	        ih.is_original = false;
+		cur_rtt = ih.rtt_prime;
+	    }
 	}
     }
+
 #ifdef ARC_DEBUG_RCVDATA_DETAIL
     std::cout << "ArcModule dataRecived thread_id[" << ih.GetTid () << "] rtt_est[" << ih.GetRttEstimate () << "] rtt_prime[" << ih.GetRttPrime () << "] isOriginal[" << ih.IsOriginal () << "] count[" << ih.GetRxCount () << "]" << std::endl;
 #endif //ARC_DEBUG_RCVDATA_DETAIL
@@ -579,7 +595,7 @@ enum EstResult ArcHistry::nwEstimate(long interval)
         seq_map::iterator tmp_entry = smap.find(i);
         if (tmp_entry != smap.end ()) {
 	    tid = tmp_entry->GetTid ();
-            if (!tmp_entry->IsRetx ()) {
+            if (!tmp_entry->IsRetx () && tmp_entry->GetRxCount () == 1) {
 	        if (tmp_entry->IsOriginal ()) {
 		  sum_rtt += tmp_entry->GetRttEstimate ();
 		  ++rx_count;

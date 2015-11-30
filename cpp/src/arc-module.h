@@ -10,10 +10,10 @@
 #define COUNT_SW_HIGH 10
 #define COUNT_SW_LOW -10
 #define X_BYTE 1024
-#define JITTER_OFFSET 10
-#define COLLAPSE_OFFSET 500
-#define ARC_INTERVAL 50
-#define MIN_RTT_EXPIRE 10000
+#define JITTER_OFFSET 20 /* [ms] */
+#define COLLAPSE_OFFSET 500 /* [ms] */
+#define ARC_INTERVAL 50 /* [ms] */
+#define MIN_RTT_EXPIRE 10000  /* [ms] */
 #define FIRST_CHALLENGE_RATIO 0.05
 #define SWITCH_HIGHER_SAFTIY_MARGIN 0.1
 #define STOP_CHALLENGE_RATIO 0.01
@@ -162,6 +162,7 @@ namespace ndnrtc {
         uint32_t indexSeq_, lastRcvSeq_, lastEstSeq_;
         double prevAvgRtt_, minRtt_, minRttCandidate_;
         double avgDataSize_;
+	long avgGenDelay_;
 	unsigned int sumDataSize_;
         long offsetJitter_, offsetCollapse_;
         ArcTval updateMinRttTval_;
