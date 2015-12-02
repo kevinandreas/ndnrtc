@@ -237,10 +237,11 @@ VideoConsumer::onDataArrived(const boost::shared_ptr<const Interest>& interest,
         SegmentData::SegmentMetaInfo segmentMeta = segmentData.getMetadata();
         
         arcModule_->dataReceivedX(interest->getName().toUri(),
-                                 data->getName().toUri(),
-                                 getThreadIdx(threadName),
-                                 data->getDefaultWireEncoding().size(),
-                                 segmentMeta.interestNonce_,
-                                 segmentMeta.generationDelayMs_);
+                                  data->getName().toUri(),
+                                  getThreadIdx(threadName),
+                                  settings_.streamParams_.producerParams_.segmentSize_,
+                                  data->getDefaultWireEncoding().size(),
+                                  segmentMeta.interestNonce_,
+                                  segmentMeta.generationDelayMs_);
     }
 }

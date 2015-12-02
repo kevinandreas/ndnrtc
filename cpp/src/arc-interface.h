@@ -119,6 +119,8 @@ namespace ndnrtc {
          * @param name          - Data segment name
          * @param threadId      - ID of the media thread received Data segment 
          *                      belongs to
+         * @param payloadSize   - Payload size of the packet (segment size set 
+         *                      by producer)
          * @param ndnPacketSize - Full size (including NDN packet overhead) of
          *						Data segment packet (in  bytes)
          * @param dataNonce     - nonce value of the Interest that retrieved this
@@ -136,6 +138,7 @@ namespace ndnrtc {
         virtual void dataReceivedX(const std::string &interestName,
                                    const std::string &dataName,
                                    unsigned int threadId,
+                                   unsigned int payloadSize,
                                    unsigned int ndnPacketSize,
                                    int32_t dataNonce,
                                    int32_t dGen) = 0;
