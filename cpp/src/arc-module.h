@@ -8,15 +8,27 @@
 
 #define THREAD_MAX 10
 #define COUNT_SW_HIGH 10
-#define COUNT_SW_LOW -10
+#define COUNT_SW_LOW -5
+#define ARC_TIMEOUT_COUNT 10
 #define X_BYTE 1024
 #define JITTER_OFFSET 20 /* [ms] */
 #define COLLAPSE_OFFSET 500 /* [ms] */
 #define ARC_INTERVAL 50 /* [ms] */
 #define MIN_RTT_EXPIRE 10000  /* [ms] */
 #define FIRST_CHALLENGE_RATIO 0.05
-#define SWITCH_HIGHER_SAFTIY_MARGIN 0.1
+#define SWITCH_HIGHER_SAFTIY_MARGIN 0.3
 #define STOP_CHALLENGE_RATIO 0.01
+#define INITIAL_HEADER_OH 0.4
+
+#define BIT_FLAG_0 (1 << 0)
+#define BIT_FLAG_1 (1 << 1)
+#define BIT_FLAG_2 (1 << 2)
+#define BIT_FLAG_3 (1 << 3)
+#define BIT_FLAG_4 (1 << 4)
+#define BIT_FLAG_5 (1 << 5)
+#define BIT_FLAG_6 (1 << 6)
+#define BIT_FLAG_7 (1 << 7)
+
 
 #define ARC_DEBUG_INITIALIZE
 //#define ARC_DEBUG_TIMER
@@ -98,6 +110,7 @@ namespace ndnrtc {
         void dataReceivedX(const std::string &interestName,
                            const std::string &dataName,
                            unsigned int threadId,
+			   unsigned int payloadSize,
                            unsigned int ndnPacketSize,
                            int32_t dataNonce,
                            int32_t dGen);
@@ -114,9 +127,15 @@ namespace ndnrtc {
             onChallengeStopped,
         };
         
+	struct ThreadStatistics {
+	    unsigned int id_;
+	    double headerOh_;
+	};
+
         boost::asio::steady_timer arcTimer_;
         
         ThreadEntry ThreadTable[THREAD_MAX];
+	ThreadStatistics ThreadStatTable[THREAD_MAX];
         unsigned int numThread_;
         unsigned int currThreadId_;
         unsigned int nextThreadId_;
@@ -139,6 +158,7 @@ namespace ndnrtc {
         bool isLowerThread(const unsigned int threadId);
         unsigned int getHigherThread(const unsigned int threadId);
         unsigned int getLowerThread(const unsigned int threadId);
+        unsigned int getLowestThread();
     };
     
     class ArcHistry
@@ -160,6 +180,7 @@ namespace ndnrtc {
         
     private:
         uint32_t indexSeq_, lastRcvSeq_, lastEstSeq_;
+	uint32_t noRcvCount_;
         double prevAvgRtt_, minRtt_, minRttCandidate_;
         double avgDataSize_;
 	long avgGenDelay_;
