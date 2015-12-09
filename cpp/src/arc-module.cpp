@@ -51,8 +51,6 @@ int ArcModule::initialize(IRateAdaptationModuleCallback* const callback,
     
     for (auto itr = mediaThreads.begin(); itr != mediaThreads.end(); ++itr) {
         ThreadTable[numThread_] = *itr;
-	ThreadStatTable[numThread_].id_ = itr->id_;
-	ThreadStatTable[numThread_].headerOh_ = INITIAL_HEADER_OH;
 #ifdef ARC_DEBUG_INITIALIZE
         std::cout << "ArcModule initializing thread_id[" << ThreadTable[numThread_].id_ << "] bitrate[" <<  ThreadTable[numThread_].bitrate_ << "kbps] parity[" << ThreadTable[numThread_].parityRatio_ << "]" << std::endl;
 #endif //ARC_DEBUG_INITIALIZE
@@ -116,18 +114,12 @@ void ArcModule::dataReceivedX(const std::string &interestName,
     std::cout << "ArcModule dataReceived thread_id[" << threadId << "] name[" << interestName << "] size[" << ndnPacketSize << "]" << std::endl;
 #endif //ARC_DEBUG_RCVDATA
 
-    /* calcurate average header overhead */
-    /*
-    ThreadStatTable[threadId].headerOh_ = (0.95 * ThreadStatTable[threadId].headerOh_) + (0.05 * (ndnPacketSize - payloadSize) / payloadSize);
-    std::cout << ndnPacketSize << " " << payloadSize << std::endl;
-    */
-
     if (!(consumerPhase_ == ConsumerPhaseFetch || consumerPhase_ == ConsumerPhaseChallenge)) return;
     
     if (threadId == currThreadId_ && currThHist_ != NULL) {
-        currThHist_->dataReceivedX(interestName, threadId, ndnPacketSize, dataNonce, dGen);
+        currThHist_->dataReceivedX(interestName, threadId, payloadSize, ndnPacketSize, dataNonce, dGen);
     } else if (threadId == nextThreadId_ && nextThHist_ != NULL) {
-        nextThHist_->dataReceivedX(interestName, threadId, ndnPacketSize, dataNonce, dGen);
+        nextThHist_->dataReceivedX(interestName, threadId, payloadSize, ndnPacketSize, dataNonce, dGen);
     }
     return;
 }
@@ -224,6 +216,7 @@ void ArcModule::autoRateControl()
     double delta_rate;
     ArcTval tv;
     long interval;
+    bool keep_idel_rate = false;
     
     getNowTval(&tv);
     interval = diffArcTval(&tv, &arcCallTval_);
@@ -241,11 +234,17 @@ void ArcModule::autoRateControl()
             result_curr = currThHist_->nwEstimate(interval);
             result_next = nextThHist_->nwEstimate(interval);
 
+	    /* if actual throughtput is not enough than estimate rate, arc module avoid to increase estimate rate */
+	    if ( convertPpsToKBps(nextInterestPps_) > (0.8 * nextThHist_->getAvgThroughput ()) ||
+		 (convertPpsToKBps(nextInterestPps_) + getBitRateThread(currThreadId_)) > 
+		 (0.8 * (currThHist_->getAvgThroughput () + nextThHist_->getAvgThroughput ())))
+	        keep_idel_rate = true;
+
 #ifdef ARC_DEBUG_ESTIMATE
 	    std::cout << "ArcModule autoRateControl on Challenge Phase thread_id[curr:" << currThreadId_ << " next:" << nextThreadId_ << "] curr_result[" << result_curr << "] next_result [" << result_next << "]" << std::endl;
 #endif //ARC_DEBUG_ESTIMATE
 
-            if (result_curr == EstNormal && result_next == EstNormal) {
+            if (result_curr == EstNormal && result_next == EstNormal && keep_idel_rate) {
                 nextInterestPps_ += (20 / sqrt (nextInterestPps_));
             } else if (result_curr == EstCongested && result_next == EstCongested) {
                 nextInterestPps_ -= (0.5 * sqrt (nextInterestPps_));
@@ -290,8 +289,8 @@ void ArcModule::autoRateControl()
                     callback_->onThreadChallenge(delta_rate);
                 }
             } else {
-                /* switch thread of lower bitrate and waiting reportThreadEvent() */
-                callback_->onThreadChallenge(0);
+	        /* switch thread of lower bitrate and waiting reportThreadEvent() */
+	        callback_->onThreadChallenge(0);
                 currThreadId_ = getLowerThread(currThreadId_);
                 arcState_ = onThreadSwitch;
 #ifdef ARC_DEBUG_THREAD
@@ -379,7 +378,15 @@ long ArcModule::diffArcTval(const ArcTval* now_t, const ArcTval* prev_t)
 
 double ArcModule::getBitRateThread(const unsigned int threadId)
 {
-    return (ThreadTable[threadId].bitrate_ * (1.0 + ThreadTable[threadId].parityRatio_) * (1.0 + ThreadStatTable[threadId].headerOh_));
+    double oh;
+    if (threadId == currThreadId_ && currThHist_ != NULL)
+        oh = currThHist_->getHeaderOH ();
+    else if (threadId == nextThreadId_ && nextThHist_ != NULL)
+        oh = nextThHist_->getHeaderOH ();
+    else
+        oh = INITIAL_HEADER_OH;
+
+    return (ThreadTable[threadId].bitrate_ * (1.0 + ThreadTable[threadId].parityRatio_) * (1.0 + oh));
 }
 
 double ArcModule::convertKBpsToPps(double kbps)
@@ -489,9 +496,8 @@ ArcHistry::ArcHistry()
 {
     indexSeq_ = lastRcvSeq_ = lastEstSeq_ = 0;
     prevAvgRtt_ = minRtt_ = minRttCandidate_ = 0;
-    avgGenDelay_ = std::numeric_limits<long>::max ();
-    avgDataSize_ = 0;
     sumDataSize_ = 0;
+    throughtputST_ = throughtputLT_ = 0;
     noRcvCount_ = 0;
     offsetJitter_ = JITTER_OFFSET;
     offsetCollapse_ = COLLAPSE_OFFSET;
@@ -532,6 +538,7 @@ void ArcHistry::interestRetransmit(const std::string &name,
 
 void ArcHistry::dataReceivedX(const std::string &name,
                              unsigned int threadId,
+			     unsigned int payloadSize,
                              unsigned int ndnPacketSize,
                              uint32_t dataNonce,
                              uint32_t dGen)
@@ -542,19 +549,19 @@ void ArcHistry::dataReceivedX(const std::string &name,
 
     getNowTval(&tv);
 
-    /* update average data size and amount of data size */
-    if (avgDataSize_ == 0)
-        avgDataSize_ = ndnPacketSize;
-    avgDataSize_ = 0.9 * avgDataSize_ + 0.1 * ndnPacketSize;
+    /* counting parameters for caluculate some statstics */
     sumDataSize_ += ndnPacketSize;
+    if (listGenDelay_.size () >= LIST_SIZE_GENDLAY)
+        listGenDelay_.pop_front ();
+    listGenDelay_.push_back (dGen);
+    if (listHeaderOH_.size () >= LIST_SIZE_HEADEROH)
+        listHeaderOH_.pop_front ();
+    listHeaderOH_.push_back ((double)(ndnPacketSize - payloadSize) / ndnPacketSize);
 
-    /* update average generation delay */
-    /*
-    if (avgGenDelay_ == std::numeric_limits<long>::max ())
-        avgGenDelay_ = dGen;
-    avgGenDelay_ = ((avgGenDelay_ * 9) + dGen) / 10;
-    */
+    /* calucurate average of generation delay */
+    avgGenDelay_ = calUintListAvg(&listGenDelay_);
 
+    /* finding entry of Interest Histry */
     name_map& nmap = InterestHistries_.get<i_name> ();
     name_map::iterator entry = nmap.find(name);
     if (entry == nmap.end ()) return;
@@ -572,6 +579,12 @@ void ArcHistry::dataReceivedX(const std::string &name,
         ih.rx_time = tv;
         ih.rtt_prime = diffArcTval(&tv, &tv2);
 	//ih.rtt_estimate = diffArcTval(&tv, &tv2) - avgGenDelay_;
+	/*
+	if (ih.rtt_prime > avgGenDelay_)
+	    ih.rtt_estimate = ih.rtt_prime - avgGenDelay_;
+	else if (ih.rtt_prime > dGen)
+	    ih.rtt_estimate = ih.rtt_prime - dGen;
+	*/
 	if (ih.rtt_prime > dGen)
 	    ih.rtt_estimate = ih.rtt_prime - dGen;
 	else
@@ -587,7 +600,7 @@ void ArcHistry::dataReceivedX(const std::string &name,
 	}
     }
 #ifdef ARC_DEBUG_RCVDATA_DETAIL
-    std::cout << "ArcModule dataRecived thread_id[" << ih.GetTid () << "] seq[" << ih.GetSeq () << "] rtt_est[" << ih.GetRttEstimate () << "] rtt_prime[" << ih.GetRttPrime () << "] isOriginal[" << ih.IsOriginal () << "] count[" << ih.GetRxCount () << "] isRetx[" << ih.IsRetx () << "]" << std::endl;
+    std::cout << "ArcModule dataRecived thread_id[" << ih.GetTid () << "] seq[" << ih.GetSeq () << "] rtt_est[" << ih.GetRttEstimate () << "] rtt_prime[" << ih.GetRttPrime () << "] isOriginal[" << ih.IsOriginal () << "] count[" << ih.GetRxCount () << "] isRetx[" << ih.IsRetx () << "] avgGenDelay[" << avgGenDelay_ << "]" << std::endl;
 #endif //ARC_DEBUG_RCVDATA_DETAIL
     nmap.replace(entry, ih);
 
@@ -624,8 +637,11 @@ enum EstResult ArcHistry::nwEstimate(long interval)
     double avg_rtt = 0;
     double prev_avg_rtt;
     unsigned int tid;
-    long avg_throughput = 0;
+    ArcTval tv, tv2;
     
+    getNowTval(&tv);
+
+    /*
     if (diffSeq(lastRcvSeq_, lastEstSeq_) <= 0) {
         ++noRcvCount_;
 	if (noRcvCount_ >= ARC_TIMEOUT_COUNT)
@@ -635,9 +651,8 @@ enum EstResult ArcHistry::nwEstimate(long interval)
     } else {
         noRcvCount_ = 0;
     }
+    */
 
-
-    
     seq_map& smap = InterestHistries_.get<i_seq> ();
     
     /* serch entry of Interest Histry for a ARC estimation priod */
@@ -663,8 +678,17 @@ enum EstResult ArcHistry::nwEstimate(long interval)
 
     /* calcurate average throughput and rtt, and then judge network condition */
     /* if NDN had received data for a ARC estimation priod */
-    avg_throughput = (sumDataSize_ * 8 * 1000) / (interval * 1024);
+    throughtputST_ = (sumDataSize_ * 8 * 1000) / (interval * 1024);
+    listSumDataSize_.push_back (sumDataSize_);
+    listArcTval_.push_back (tv);
+    tv2 = listArcTval_.front ();
+    if (diffArcTval(&tv, &tv2) >= 1000) {
+        throughtputLT_ = (unsigned int)((double)calUintListSum(&listSumDataSize_) * 8 * 1000) / (diffArcTval(&tv, &tv2) * 1024);
+	listSumDataSize_.pop_front ();
+	listArcTval_.pop_front ();
+    }
     sumDataSize_ = 0;
+
     if (rx_count > 0) {
         avg_rtt = sum_rtt / rx_count;
 
@@ -674,7 +698,7 @@ enum EstResult ArcHistry::nwEstimate(long interval)
 	prevAvgRtt_ = avg_rtt;
 
 #ifdef ARC_DEBUG_ESTIMATE
-	std::cout << "ArcModule nwEstimate thread_id[" << tid << "] avg_rtt[" << avg_rtt << "] prev_rtt [" << prev_avg_rtt << "] min_rtt[" << minRtt_ << "] num_of_data[" << rx_count << "] avg_throughput[" << avg_throughput << "kbps]"<< std::endl;
+	std::cout << "ArcModule nwEstimate thread_id[" << tid << "] avg_rtt[" << avg_rtt << "] prev_rtt [" << prev_avg_rtt << "] min_rtt[" << minRtt_ << "] num_of_data[" << rx_count << "] throughput[" << throughtputST_ << "kbps] avg_throughput[" << throughtputLT_ << "kbps]" << std::endl;
 #endif //ARC_DEBUG_ESTIMATE
 
 	if (avg_rtt > (minRtt_ + offsetCollapse_))
@@ -699,6 +723,28 @@ enum EstResult ArcHistry::nwEstimate(long interval)
 	}
     }
     return EstUnclear;
+}
+
+
+double ArcHistry::getHeaderOH()
+{
+    double oh;
+    if (listHeaderOH_.size () < (LIST_SIZE_HEADEROH / 4))
+        return INITIAL_HEADER_OH;
+    oh = calDoubleListAvg(&listHeaderOH_);
+    return oh;
+}
+
+
+unsigned int ArcHistry::getAvgThroughput()
+{
+    return throughtputLT_;
+}
+
+
+unsigned int ArcHistry::getThroughput()
+{
+    return throughtputST_;
 }
 
 
@@ -738,4 +784,56 @@ uint32_t ArcHistry::diffSeq (uint32_t a, uint32_t b)
             diff = a - b;
     }
     return diff;
+}
+
+
+
+double ArcHistry::calDoubleListAvg (DoubleList *v)
+{
+    double sum = 0;
+    int sample = v->size ();
+
+    if (sample == 0) {
+        return 0;
+    }
+    std::list<double>::iterator TLIterator = v->begin ();
+    while (TLIterator != v->end ()) {
+        sum += *TLIterator;
+	TLIterator++;
+    }
+    return (sum / sample);
+}
+
+
+unsigned int  ArcHistry::calUintListAvg (UintList *v)
+{
+    unsigned sum = 0;
+    int sample = v->size ();
+
+    if (sample == 0) {
+        return 0;
+    }
+    std::list<unsigned int>::iterator TLIterator = v->begin ();
+    while (TLIterator != v->end ()) {
+        sum += *TLIterator;
+	TLIterator++;
+    }
+    return (sum / sample);
+}
+
+
+unsigned int  ArcHistry::calUintListSum (UintList *v)
+{
+    unsigned sum = 0;
+    int sample = v->size ();
+
+    if (sample == 0) {
+        return 0;
+    }
+    std::list<unsigned int>::iterator TLIterator = v->begin ();
+    while (TLIterator != v->end ()) {
+        sum += *TLIterator;
+	TLIterator++;
+    }
+    return sum;
 }

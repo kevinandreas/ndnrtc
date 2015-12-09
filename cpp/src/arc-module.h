@@ -18,6 +18,8 @@
 #define FIRST_CHALLENGE_RATIO 0.05
 #define SWITCH_HIGHER_SAFTIY_MARGIN 0.3
 #define STOP_CHALLENGE_RATIO 0.01
+#define LIST_SIZE_GENDLAY 100
+#define LIST_SIZE_HEADEROH 100
 #define INITIAL_HEADER_OH 0.4
 
 #define BIT_FLAG_0 (1 << 0)
@@ -43,6 +45,7 @@
 
 #include <time.h>
 #include <sys/time.h>
+#include <list.h>
 
 #include <boost/asio/steady_timer.hpp>
 
@@ -69,7 +72,12 @@ namespace ndnrtc {
         time_t tim;
         long msec;
     };
-    
+
+    typedef std::list<double> DoubleList;
+    typedef std::list<unsigned int> UintList;
+    typedef std::list<ArcTval> ArcTvalList;
+
+
     /**
      * A base class for ARC module class which uses boost::asio::io_service
      * for scheduling callbacks and timers
@@ -127,15 +135,9 @@ namespace ndnrtc {
             onChallengeStopped,
         };
         
-	struct ThreadStatistics {
-	    unsigned int id_;
-	    double headerOh_;
-	};
-
         boost::asio::steady_timer arcTimer_;
         
         ThreadEntry ThreadTable[THREAD_MAX];
-	ThreadStatistics ThreadStatTable[THREAD_MAX];
         unsigned int numThread_;
         unsigned int currThreadId_;
         unsigned int nextThreadId_;
@@ -173,25 +175,37 @@ namespace ndnrtc {
                                 unsigned int threadId);
         void dataReceivedX(const std::string &name,
                           unsigned int threadId,
+			  unsigned int payloadSize,
                           unsigned int ndnPacketSize,
 			  uint32_t dataNonce,
 			  uint32_t dGen);
         enum EstResult nwEstimate(long interval);
+	double getHeaderOH();
+	unsigned int getAvgThroughput();
+	unsigned int getThroughput();
+	
         
     private:
         uint32_t indexSeq_, lastRcvSeq_, lastEstSeq_;
 	uint32_t noRcvCount_;
         double prevAvgRtt_, minRtt_, minRttCandidate_;
-        double avgDataSize_;
-	long avgGenDelay_;
-	unsigned int sumDataSize_;
+	uint32_t avgGenDelay_;
+	unsigned int sumDataSize_, throughtputST_, throughtputLT_;
         long offsetJitter_, offsetCollapse_;
         ArcTval updateMinRttTval_;
+	DoubleList listHeaderOH_;
+	UintList listGenDelay_;
+	UintList listSumDataSize_;
+	ArcTvalList listArcTval_;
+
         bool congestionSign_;
         
         uint32_t diffSeq (uint32_t a, uint32_t b);
         void getNowTval(ArcTval *qt);
         long diffArcTval(const ArcTval* now_t, const ArcTval* prev_t);
+	double calDoubleListAvg(DoubleList *v);
+	unsigned int calUintListAvg(UintList *v);
+	unsigned int calUintListSum(UintList *v);
         
         struct InterestHistry {
             InterestHistry (const uint32_t _seq, const std::string& _name,
