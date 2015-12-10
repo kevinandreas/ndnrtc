@@ -214,7 +214,7 @@ namespace ndnrtc {
             PacketNumber exclusionPacket_;
             bool waitForThreadTransition_, waitNewThreadStarted_, waitOldThreadComplete_;
             IRateAdaptationModule::ArcIndicators currentArcIndicators_;
-            std::string currentThreadName_, oldThreadName_;
+            std::string currentThreadName_, oldThreadName_, challengeThreadName_;
             boost::shared_ptr<ChallengePipeliner> challengePipeliner_;
             
             // incoming data statistics
@@ -240,6 +240,8 @@ namespace ndnrtc {
                         return "Buffering";
                     case StateFetching:
                         return "Fetching";
+                    case StateChallenging:
+                        return "Challenging";
                     default:
                         return "Unknown";
                 }
@@ -362,6 +364,7 @@ namespace ndnrtc {
             void stop();
             void newChallengeLevel(double challengeLevel);
             void requestChallengingData(bool isKey);
+            void updateFrameNumbers(PacketNumber latestDelta, PacketNumber latestKey);
             
         private:
             IChallengePipelinerCallback *callback_;

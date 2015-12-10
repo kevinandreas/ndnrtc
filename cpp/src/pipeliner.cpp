@@ -181,6 +181,7 @@ Pipeliner2::startChallenging(std::string threadName,
     if (state_ == StateFetching)
     {
         switchToState(StateChallenging);
+        challengeThreadName_ = threadName;
         
         std::string challengeThreadPrefix = NdnRtcNamespace::getThreadPrefix(consumer_->getPrefix(), threadName);
         
@@ -576,14 +577,14 @@ Pipeliner2::onData(const boost::shared_ptr<const Interest>& interest,
                 break;
             }
         } // fall through
+        case StateAdjust: // fall through
+        case StateFetching: // fall through
         case StateChallenging:
         {
-            
-        } // fall through
-        case StateAdjust: // fall through
-        case StateFetching:
-        {
             updateThreadSyncList(metaInfo, isKeyPrefix);
+            if (state_ == StateChallenging)
+                challengePipeliner_->updateFrameNumbers(deltaSyncList_[challengeThreadName_],
+                                                        keySyncList_[challengeThreadName_]);
             
             if (isKeyPrefix && waitForThreadTransition_)
                 performThreadTransition();
@@ -1413,6 +1414,7 @@ ChallengePipeliner::ChallengePipeliner(IChallengePipelinerCallback* const callba
 callback_(callback),
 isRunning_(false)
 {
+    description_ = "challenge-pipeliner";
 }
 
 
@@ -1490,6 +1492,14 @@ ChallengePipeliner::requestChallengingData(bool isKey)
     
     requestSegments(dataSeg, dataPrefix);
     requestSegments(paritySeg, parityPrefix);
+}
+
+void
+ChallengePipeliner::updateFrameNumbers(PacketNumber latestDelta, PacketNumber latestKey)
+{
+#warning this should probably be checked if new values are less than existing ones
+    keyNo_ = latestKey;
+    deltaNo_ = latestDelta;
 }
 
 void
