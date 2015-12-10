@@ -33,6 +33,8 @@ int ArcModule::initialize(IRateAdaptationModuleCallback* const callback,
                           const CodecMode& codecMode,
                           std::vector<ThreadEntry> mediaThreads)
 {
+    ArcTval tv;
+    getNowTval(&tv);
     callback_ = callback;
     if (codecMode != CodecMode::CodecModeNormal) return -1;
     
@@ -47,8 +49,9 @@ int ArcModule::initialize(IRateAdaptationModuleCallback* const callback,
     nextInterestPps_ = 0;
     countChallengePhase_ = 0;
     currThHist_ = nextThHist_ = NULL;
-    getNowTval(&arcCallTval_);
-    
+    arcCallTval_ = arcStartTval_ = arcCallThroughputTval_ = tv;
+    sumDataSize_ = 0;
+
     for (auto itr = mediaThreads.begin(); itr != mediaThreads.end(); ++itr) {
         ThreadTable[numThread_] = *itr;
 #ifdef ARC_DEBUG_INITIALIZE
@@ -110,17 +113,27 @@ void ArcModule::dataReceivedX(const std::string &interestName,
                               int32_t dataNonce,
                               int32_t dGen)
 {
+    double drd = 0;
+    ArcTval tv;
 #ifdef ARC_DEBUG_RCVDATA
     std::cout << "ArcModule dataReceived thread_id[" << threadId << "] name[" << interestName << "] size[" << ndnPacketSize << "]" << std::endl;
 #endif //ARC_DEBUG_RCVDATA
+    getNowTval(&tv);
+    sumDataSize_ += ndnPacketSize;
 
     if (!(consumerPhase_ == ConsumerPhaseFetch || consumerPhase_ == ConsumerPhaseChallenge)) return;
     
     if (threadId == currThreadId_ && currThHist_ != NULL) {
-        currThHist_->dataReceivedX(interestName, threadId, payloadSize, ndnPacketSize, dataNonce, dGen);
+        drd = currThHist_->dataReceivedX(interestName, threadId, payloadSize, ndnPacketSize, dataNonce, dGen);
     } else if (threadId == nextThreadId_ && nextThHist_ != NULL) {
-        nextThHist_->dataReceivedX(interestName, threadId, payloadSize, ndnPacketSize, dataNonce, dGen);
+        drd = nextThHist_->dataReceivedX(interestName, threadId, payloadSize, ndnPacketSize, dataNonce, dGen);
     }
+
+#ifdef ARC_EVALUATION
+    if (drd != 0)
+      //std::cout << "ArcModule " << diffArcTval(&tv, &arcStartTval_) << " Phase " << consumerPhase_ << " DRD " << drd << std::endl;
+#endif //ARC_EVALUATION
+
     return;
 }
 
@@ -217,6 +230,7 @@ void ArcModule::autoRateControl()
     ArcTval tv;
     long interval;
     bool keep_idel_rate = false;
+    unsigned int throughput = 0;
     
     getNowTval(&tv);
     interval = diffArcTval(&tv, &arcCallTval_);
@@ -225,6 +239,15 @@ void ArcModule::autoRateControl()
 #endif //ARC_DEBUG_TIMER
     arcCallTval_ = tv;
     
+    if (diffArcTval(&tv, &arcCallThroughputTval_) >= 1000) {
+        throughput = (unsigned int)(((double)sumDataSize_ * 8 * 1000) / (diffArcTval(&tv, &arcCallThroughputTval_) * 1024));
+	sumDataSize_ = 0;
+	arcCallThroughputTval_ = tv;
+#ifdef ARC_EVALUATION
+        std::cout << "ArcModule " << diffArcTval(&tv, &arcStartTval_) << " Phase " << consumerPhase_ << " Throughput " << throughput << std::endl;
+#endif //ARC_EVALUATION
+    }
+
     if (arcState_ == arcStateNormal &&
         (consumerPhase_ == ConsumerPhaseFetch || consumerPhase_ == ConsumerPhaseChallenge)) {
 
@@ -262,6 +285,10 @@ void ArcModule::autoRateControl()
 #ifdef ARC_DEBUG_THREAD
 		    std::cout << "ArcModule calls onThreadShouldSwitch thread_id[" << currThreadId_ << "] for detecting congestion collapse" << std::endl;
 #endif //ARC_DEBUG_THREAD
+#ifdef ARC_EVALUATION
+		    std::cout << "ArcModule ThreadSwitch thread_id[" << currThreadId_ << "] for detecting congestion collapse" << std::endl;
+#endif //ARC_EVALUATION
+
 		    callback_->onThreadShouldSwitch(currThreadId_);
 		}
             } else {
@@ -280,6 +307,9 @@ void ArcModule::autoRateControl()
 #ifdef ARC_DEBUG_THREAD
                     std::cout << "ArcModule calls onThreadShouldSwitch() thread_id[" << currThreadId_ << "] for switching higher thread" << std::endl;
 #endif //ARC_DEBUG_THREAD
+#ifdef ARC_EVALUATION
+                    std::cout << "ArcModule ThreadSwitch thread_id[" << currThreadId_ << "] for switching higher thread" << std::endl;
+#endif //ARC_EVALUATION
                     callback_->onThreadShouldSwitch(currThreadId_);
                 } else {
                     delta_rate = convertPpsToKBps(nextInterestPps_) / getBitRateThread(nextThreadId_);
@@ -296,6 +326,9 @@ void ArcModule::autoRateControl()
 #ifdef ARC_DEBUG_THREAD
                 std::cout << "ArcModule calls onThreadShouldSwitch thread_id[" << currThreadId_ << "] for switching lower thread" << std::endl;
 #endif //ARC_DEBUG_THREAD
+#ifdef ARC_EVALUATION
+                std::cout << "ArcModule ThreadSwitch thread_id[" << currThreadId_ << "] for switching lower thread" << std::endl;
+#endif //ARC_EVALUATION
                 callback_->onThreadShouldSwitch(currThreadId_);
             }
 
@@ -331,6 +364,9 @@ void ArcModule::autoRateControl()
 #ifdef ARC_DEBUG_THREAD
                         std::cout << "ArcModule calls onThreadShouldSwitch thread_id[" << currThreadId_ << "] for switching lower thread" << std::endl;
 #endif //ARC_DEBUG_THREAD
+#ifdef ARC_EVALUATION
+                        std::cout << "ArcModule ThreadSwitch thread_id[" << currThreadId_ << "] for switching lower thread" << std::endl;
+#endif //ARC_EVALUATION
                         callback_->onThreadShouldSwitch(currThreadId_);
                     }
                 }
@@ -342,6 +378,9 @@ void ArcModule::autoRateControl()
 #ifdef ARC_DEBUG_THREAD
 		  std::cout << "ArcModule calls onThreadShouldSwitch thread_id[" << currThreadId_ << "] for detecting congestion cllapse" << std::endl;
 #endif //ARC_DEBUG_THREAD
+#ifdef ARC_EVALUATION
+		  std::cout << "ArcModule calls ThreadSwitch thread_id[" << currThreadId_ << "] for detecting congestion cllapse" << std::endl;
+#endif //ARC_EVALUATION
 		  callback_->onThreadShouldSwitch(currThreadId_);
 		}
 	    }
@@ -536,7 +575,7 @@ void ArcHistry::interestRetransmit(const std::string &name,
 }
 
 
-void ArcHistry::dataReceivedX(const std::string &name,
+double ArcHistry::dataReceivedX(const std::string &name,
                              unsigned int threadId,
 			     unsigned int payloadSize,
                              unsigned int ndnPacketSize,
@@ -564,7 +603,7 @@ void ArcHistry::dataReceivedX(const std::string &name,
     /* finding entry of Interest Histry */
     name_map& nmap = InterestHistries_.get<i_name> ();
     name_map::iterator entry = nmap.find(name);
-    if (entry == nmap.end ()) return;
+    if (entry == nmap.end ()) return 0;
     seq = entry->GetSeq ();
     tv2 = entry->GetTxTime ();
 
@@ -624,7 +663,7 @@ void ArcHistry::dataReceivedX(const std::string &name,
             updateMinRttTval_ = tv;
         }
     }
-    return;
+    return cur_rtt;
 }
 
 

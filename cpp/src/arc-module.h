@@ -11,12 +11,12 @@
 #define COUNT_SW_LOW -5
 #define ARC_TIMEOUT_COUNT 10
 #define X_BYTE 1024
-#define JITTER_OFFSET 20 /* [ms] */
+#define JITTER_OFFSET 30 /* [ms] */
 #define COLLAPSE_OFFSET 500 /* [ms] */
 #define ARC_INTERVAL 50 /* [ms] */
 #define MIN_RTT_EXPIRE 10000  /* [ms] */
 #define FIRST_CHALLENGE_RATIO 0.05
-#define SWITCH_HIGHER_SAFTIY_MARGIN 0.3
+#define SWITCH_HIGHER_SAFTIY_MARGIN 0.2
 #define STOP_CHALLENGE_RATIO 0.01
 #define LIST_SIZE_GENDLAY 100
 #define LIST_SIZE_HEADEROH 100
@@ -40,6 +40,7 @@
 //#define ARC_DEBUG_RCVDATA
 //#define ARC_DEBUG_RCVDATA_DETAIL
 //#define ARC_DEBUG_SNDINTEREST
+//#define ARC_EVALUATION
 
 
 
@@ -146,11 +147,12 @@ namespace ndnrtc {
         enum ArcState arcState_;
         bool arcStateCheck_; /* true:normal false:state error */
         ArcTval arcCallTval_;
-        
+        ArcTval arcStartTval_, arcCallThroughputTval_;
         double nextInterestPps_;
         ArcHistry *currThHist_, *nextThHist_;
         int countChallengePhase_;
-        
+        unsigned int sumDataSize_;
+
         void getNowTval(ArcTval *qt);
         long diffArcTval(const ArcTval* now_t, const ArcTval* prev_t);
         double getBitRateThread(const unsigned int threadId);
@@ -173,7 +175,7 @@ namespace ndnrtc {
 			       uint32_t interestNonce);
         void interestRetransmit(const std::string &name,
                                 unsigned int threadId);
-        void dataReceivedX(const std::string &name,
+        double dataReceivedX(const std::string &name,
                           unsigned int threadId,
 			  unsigned int payloadSize,
                           unsigned int ndnPacketSize,
