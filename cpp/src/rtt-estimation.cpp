@@ -48,7 +48,8 @@ RttEstimation::updateEstimation(int64_t rountripTimeMs,
 
         double current = getCurrentEstimation();
         (*statStorage_)[Indicator::RttEstimation] = current;
-        LogStatC << "rtt est" << STAT_DIV << current << std::endl;
+        LogStatC << "rtt est" << STAT_DIV << current << STAT_DIV
+        << "rtt var" << STAT_DIV << getCurrentVariation() << std::endl;
         
         LogTraceC
         << "updated estimation. round " << rountripTimeMs <<
@@ -72,6 +73,12 @@ RttEstimation::getCurrentEstimation() const
 {
     return NdnRtcUtils::currentSlidingAverageValue(estimatorId_);
 //    return NdnRtcUtils::currentMeanEstimation(estimatorId_);
+}
+
+double
+RttEstimation::getCurrentVariation() const
+{
+    return NdnRtcUtils::currentDeviationEstimation(estimatorId_);
 }
 
 double
