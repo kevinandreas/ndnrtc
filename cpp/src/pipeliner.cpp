@@ -1128,6 +1128,14 @@ Pipeliner2::updateThreadSyncList(const PrefixMetaInfo& metaInfo, bool isKey)
         
         map.insert(metaInfo.syncList_.begin(), metaInfo.syncList_.end());
         mapList = map;
+        
+#ifdef NDN_TRACE
+        std::stringstream ss;
+        ss << (isKey?"K: ":"D: ");
+        
+        for (auto it:mapList) ss << it.first << "-" << it.second << " ";
+        LogTraceC << "updated sync list: " << ss.str() << std::endl;
+#endif
     }
 }
 
@@ -1500,6 +1508,7 @@ ChallengePipeliner::requestChallengingData(bool isKey)
 void
 ChallengePipeliner::updateFrameNumbers(PacketNumber latestDelta, PacketNumber latestKey)
 {
+    LogTraceC << "frame numbers update "<< latestDelta << " " << latestKey << std::endl;
 #warning this should probably be checked if new values are less than existing ones
     keyNo_ = latestKey;
     deltaNo_ = latestDelta;

@@ -237,7 +237,7 @@ VideoStream::onFrameEncoded(const std::string& threadName,
     for (auto it:keyFrameSync_) ss1 << it.first << "-" << it.second << " ";
     for (auto it:deltaFrameSync_) ss2 << it.first << "-" << it.second << " ";
         
-    LogDebugC << "thread sync list: " << ss1.str() << ss2.str() << std::endl;
+    LogTraceC << "thread sync list: " << ss1.str() << ss2.str() << std::endl;
 #endif
 }
 
