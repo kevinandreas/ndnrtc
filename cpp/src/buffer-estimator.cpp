@@ -15,7 +15,7 @@ using namespace boost;
 using namespace ndnrtc::new_api;
 
 // minimal buffer size in milliseconds
-const int64_t BufferEstimator::MinBufferSizeMs = 250;
+const int64_t BufferEstimator::MinBufferSizeMs = 50;
 
 //******************************************************************************
 #pragma mark - construction/destruction
@@ -51,6 +51,7 @@ BufferEstimator::getTargetSize()
     
     return minBufferSizeMs_;
 #else
-    return alpha_*variation + beta_*rttEstimate;
+    double targetSize = alpha_*variation + beta_*rttEstimate;
+    return (targetSize < minBufferSizeMs_)?minBufferSizeMs_:targetSize;
 #endif
 }
