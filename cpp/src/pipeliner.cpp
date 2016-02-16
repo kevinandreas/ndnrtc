@@ -1509,7 +1509,7 @@ void
 ChallengePipeliner::onData(const boost::shared_ptr<const Interest>& interest,
                            const boost::shared_ptr<Data>& data)
 {
-    LogTraceC << "new challenge data " << data->getName() << std::endl;
+    LogDebugC << "new challenge data " << data->getName() << std::endl;
     
     bool isKey = NdnRtcNamespace::isPrefix(data->getName(), keyPrefix_);
     PrefixMetaInfo metaInfo;
@@ -1523,7 +1523,7 @@ ChallengePipeliner::onData(const boost::shared_ptr<const Interest>& interest,
 void
 ChallengePipeliner::onTimeout(const boost::shared_ptr<const Interest>& interest)
 {
-    
+    LogDebugC << "challenge data timeout " << interest->getName();
 }
 
 void
