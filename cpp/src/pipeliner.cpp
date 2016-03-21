@@ -717,10 +717,14 @@ Pipeliner2::askForSubsequentData(const boost::shared_ptr<Data>& data)
     
     if (isDeltaFrame)
     {
-        rttChangeEstimator_.newRttValue(event.slot_->getRecentSegment()->getRoundTripDelayUsec()/1000.);
+        double rttPrimeRaw = event.slot_->getRecentSegment()->getRoundTripDelayUsec()/1000.;
+        rttChangeEstimator_.newRttValue(rttPrimeRaw);
         (*statStorage_)[Indicator::RttPrime] = rttChangeEstimator_.getMeanValue();
         LogStatC << "rtt prime"
-        << STAT_DIV << (*statStorage_)[Indicator::RttPrime] << std::endl;
+        << STAT_DIV << (*statStorage_)[Indicator::RttPrime]
+        << STAT_DIV << "rtt prime raw"
+        << STAT_DIV << rttPrimeRaw
+        << std::endl;
     }   
     
     if (event.type_ == FrameBuffer::Event::FirstSegment)
