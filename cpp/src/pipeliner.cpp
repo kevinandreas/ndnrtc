@@ -774,6 +774,18 @@ Pipeliner2::askForSubsequentData(const boost::shared_ptr<Data>& data)
         << "). good luck." << std::endl;
     }
     
+    // hack-3
+    LogTraceC << "lambda_min" << STAT_DIV << currentMinimalLambda << std::endl;
+    LogTraceC << "lambda_max" << STAT_DIV << currentMaximumLambda << std::endl;
+    
+    bool lambdaTooSmall = (currentMinimalLambda > window_.getDefaultWindowSize());
+    bool unstable = !stabilityEstimator_.isStable();
+    // hack-3
+    bool lowBuffer = ((double)frameBuffer_->getPlayableBufferSize() / (double)frameBuffer_->getTargetSize() < 0.5);
+    
+    LogTraceC << "unstable" << STAT_DIV << unstable << std::endl;
+    LogTraceC << "low_buf" << STAT_DIV << lowBuffer << std::endl;
+    
     switch (state_) {
         case StateChasing:
         {
@@ -856,9 +868,7 @@ Pipeliner2::askForSubsequentData(const boost::shared_ptr<Data>& data)
         {
             if (isTimedOut)
             {
-                bool lambdaTooSmall = (currentMinimalLambda > window_.getDefaultWindowSize());
-                bool unstable = !stabilityEstimator_.isStable();
-                bool lowBuffer = ((double)frameBuffer_->getPlayableBufferSize() / (double)frameBuffer_->getEstimatedBufferSize() < 0.5);
+//                bool lowBuffer = ((double)frameBuffer_->getPlayableBufferSize() / (double)frameBuffer_->getEstimatedBufferSize() < 0.5);
                 // disable draining buffer check
                 bool drainingBuffer = false; //(frameBuffer_->getEstimatedBufferSize() < frameBuffer_->getTargetSize());
                 
