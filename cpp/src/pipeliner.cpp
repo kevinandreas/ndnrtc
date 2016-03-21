@@ -893,7 +893,7 @@ Pipeliner2::askForSubsequentData(const boost::shared_ptr<Data>& data)
     
     if (needDecreaseWindow || needIncreaseWindow)
     {
-        double frac = 0.5;
+        double frac = 0.5, decreaseFrac = 0.25, recoverFrac = 2;
         int delta = 0;
         unsigned int currentLambda = window_.getDefaultWindowSize();
         
@@ -912,7 +912,7 @@ Pipeliner2::askForSubsequentData(const boost::shared_ptr<Data>& data)
         }
         else if (needDecreaseWindow)
         {
-            delta = -int(ceil(frac*float(currentLambda)));
+            delta = -int(ceil(decreaseFrac*float(currentLambda)));
 
             if (failedWindow_ >= delta+currentLambda)
             {
@@ -927,11 +927,17 @@ Pipeliner2::askForSubsequentData(const boost::shared_ptr<Data>& data)
             {
                 if (delta+currentLambda < currentMinimalLambda)
                 {
+//                    LogWarnC
+//                    << "attempt to decrease lambda more (by " << delta
+//                    << ") than current minimal lambda allows (" << currentMinimalLambda
+//                    << "). will set lambda to minimal" << std::endl;
+//                    delta = currentMinimalLambda - currentLambda;
                     LogWarnC
-                    << "attempt to decrease lambda more (by " << delta
+                    << "NDN-HACK2: attempt to decrease lambda more (by " << delta
                     << ") than current minimal lambda allows (" << currentMinimalLambda
-                    << "). will set lambda to minimal" << std::endl;
-                    delta = currentMinimalLambda - currentLambda;
+                    << "). will increase current lambda (" << currentLambda
+                    << ") by " << recoverFrac << std::endl;
+                    delta = int(ceil(recoverFrac*float(currentLambda)));
                     
                     if (delta > 0)
                         LogWarnC << "current lambda "
